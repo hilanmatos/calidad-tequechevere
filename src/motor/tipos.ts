@@ -133,6 +133,8 @@ export interface CampoChecklist extends CampoBase {
   columnas: ColumnaChecklist[];
   estados: EstadoCelda[];
   porDefecto: string;
+  /** Cómo se nombra la desviación de una columna (por defecto, la etiqueta de la columna). */
+  etiquetaDesviacion?: (columna: string) => string;
 }
 
 export interface FilaMuestras {

@@ -28,7 +28,8 @@ const RANGOS: Record<string, [number, number]> = {
   pctNoConformeFormado: [0, 5], sanitec: [20, 20], tiempoHigienizacion: [3, 3], tiempoMezclado: [7, 7], ph: [3.75, 3.98],
   tEnvasado: [8, 10], tiempoExpuesto: [28, 38], pesoNeto: [599, 604], tAlmacenamiento: [2.5, 4],
   tiCongelacion: [8, 12], tfCongelacion: [-4, -1], tFritura: [170, 178], tiCongEmpaque: [-4, -1], tfCongEmpaque: [-19, -17],
-  bandejasCiclo: [10, 14], frioPBDisplay: [2.5, 4.4], frioPADisplay: [2.6, 4.8], congPBDisplay: [-20, -17.6], congPADisplay: [-19.5, -15],
+  bandejasCiclo: [10, 14], frioPBDisplay: [2.5, 4.4], frioPADisplay: [2.6, 4.8], congPBDisplay: [-20.5, -17.9], congPADisplay: [-19.8, -16.8],
+  frioPBPistola: [-2.5, -0.5], frioPAPistola: [-1.2, 1], congPBPistola: [-29, -25.5], congPAPistola: [-16, -12],
 };
 
 const ACCIONES = [
@@ -47,12 +48,12 @@ function valorDemo(campo: Campo, ctx: Contexto, r: () => number): unknown {
       const dec = campo.decimales ?? 1;
       if (campo.id === 'pesoPromedio' || campo.id === 'pesoProducto') {
         const base = p?.pesoUnidadG ?? 30;
-        return entre(base - 1.4, base + 1.6, 1);
+        return entre(base - 0.8, base + 1.2, 1);
       }
       if (campo.id === 'pesoRelleno') return p?.pesoRellenoG ? entre(p.pesoRellenoG - 0.8, p.pesoRellenoG + 0.8, 1) : undefined;
       if (campo.id === 'pesoEmpaque') {
         const d = p?.pesoDeclaradoKg ?? 0.5;
-        return entre(d - 0.004, d + 0.04, 3);
+        return entre(d - 0.002, d + 0.04, 3);
       }
       const rango = RANGOS[campo.id];
       if (rango) return entre(rango[0], rango[1], dec);
@@ -62,11 +63,11 @@ function valorDemo(campo: Campo, ctx: Contexto, r: () => number): unknown {
     }
     case 'conforme': {
       const [bien, mal] = campo.opciones ?? ['Conforme', 'No conforme'];
-      return r() < 0.97 ? bien : mal;
+      return r() < 0.985 ? bien : mal;
     }
     case 'opcion':
       if (campo.opcional && r() < 0.4) return undefined;
-      return r() < 0.93 ? campo.opciones[0] : campo.opciones[Math.min(1, campo.opciones.length - 1)];
+      return r() < 0.95 ? campo.opciones[0] : campo.opciones[Math.min(1, campo.opciones.length - 1)];
     case 'fecha':
     case 'texto':
       return campo.sugerido?.(ctx);
@@ -79,7 +80,7 @@ function valorDemo(campo: Campo, ctx: Contexto, r: () => number): unknown {
         const fila: Record<string, string> = {};
         for (const c of campo.columnas) {
           if (c.aplica && !c.aplica(ctx)) continue;
-          fila[c.id] = r() < 0.04 ? malo : bueno;
+          fila[c.id] = r() < (campo.id === 'lavado' ? 0.07 : 0.004) ? malo : bueno;
         }
         valor[o.id] = fila;
       }
@@ -96,7 +97,7 @@ function valorDemo(campo: Campo, ctx: Contexto, r: () => number): unknown {
         filas.push({
           operarioId: ops[i % Math.max(1, ops.length)]?.id,
           productoId: prod?.id,
-          muestras: Array.from({ length: campo.nMuestras }, () => entre(base - 1.2, base + 1.3, 1)),
+          muestras: Array.from({ length: campo.nMuestras }, () => entre(base - 0.9, base + 1, 1)),
           apariencia: r() < 0.95 ? 'C' : 'NC',
           lote: campo.columnasExtra?.includes('lote') ? String(28800 + Math.floor(r() * 300)) : undefined,
         });

@@ -184,7 +184,8 @@ export function desviaciones(def: DefinicionFormato, ctx: Contexto): Desviacion[
       const base = { campoId: campo.id, etapa: etapa.titulo, pcc: campo.pcc };
       if (campo.tipo === 'checklist') {
         for (const celda of celdasFuera(campo, ctx)) {
-          res.push({ ...base, etiqueta: celda.columna, valor: nombre(celda.operarioId), esperado: 'Cumple', severidad: severidadDe(campo, estado) });
+          const etiqueta = campo.etiquetaDesviacion ? campo.etiquetaDesviacion(celda.columna) : celda.columna;
+          res.push({ ...base, etiqueta, valor: nombre(celda.operarioId), esperado: 'Cumple', severidad: severidadDe(campo, estado) });
         }
       } else if (campo.tipo === 'muestras') {
         const filas = (ctx.valores[campo.id] ?? []) as FilaMuestras[];

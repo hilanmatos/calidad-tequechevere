@@ -70,6 +70,7 @@ export const lavadoManos: DefinicionFormato = {
           etiqueta: 'Personal del área',
           tipo: 'checklist',
           porDefecto: 'pendiente',
+          etiquetaDesviacion: (horario) => `Lavado de manos de las ${horario}`,
           estados: [
             { id: 'pendiente', etiqueta: 'Pendiente', corta: '·', tono: 'neutro' },
             { id: 'lavo', etiqueta: 'Se lavó', corta: '✓', tono: 'ok' },
