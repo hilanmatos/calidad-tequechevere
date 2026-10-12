@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext } from 'react';
 import type { Operario, Producto } from '../motor/tipos';
-import type { FiltroRegistros, NuevoRegistro, Perfil, Repositorio } from './repositorio';
+import type { CierreDia, FiltroRegistros, NuevoRegistro, Perfil, Repositorio } from './repositorio';
 
 export const RepoContexto = createContext<Repositorio | null>(null);
 
@@ -87,5 +87,32 @@ export function useGuardarPerfil() {
   return useMutation({
     mutationFn: (p: Perfil) => repo.guardarPerfil(p),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['perfiles'] }),
+  });
+}
+
+export function useCierre(fecha: string) {
+  const repo = useRepo();
+  return useQuery({
+    queryKey: ['cierres', fecha],
+    queryFn: async () => (await repo.cierres(fecha, fecha))[0] ?? null,
+    staleTime: 30_000,
+  });
+}
+
+export function useCerrarDia() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (c: Omit<CierreDia, 'cerradoEn' | 'cerradoPor'>) => repo.cerrarDia(c),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['cierres'] }),
+  });
+}
+
+export function useReabrirDia() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (fecha: string) => repo.reabrirDia(fecha),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['cierres'] }),
   });
 }

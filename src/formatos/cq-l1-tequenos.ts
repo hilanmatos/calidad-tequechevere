@@ -16,6 +16,7 @@ export const cqL1Tequenos: DefinicionFormato = {
   usaLote: true,
   usaHora: false,
   frecuencia: 'por-produccion',
+  unicidad: 'lote',
   etapas: [
     { id: 'generales', titulo: 'Ambiente', campos: ambiente },
     {
@@ -26,6 +27,7 @@ export const cqL1Tequenos: DefinicionFormato = {
         pct('hMasa', 'Humedad de la masa', { decimales: 2 }),
         { id: 'proveedorQueso', etiqueta: 'Proveedor del queso', tipo: 'texto', opcional: true },
         pct('hQueso', 'Humedad del queso', { decimales: 2, opcional: true }),
+        temp('tQueso', 'Temperatura del queso', { opcional: true, ayuda: 'Anótala cuando se mida; ayuda a explicar variaciones de la masa.' }),
         apariencia('aparienciaMasa'),
       ],
     },

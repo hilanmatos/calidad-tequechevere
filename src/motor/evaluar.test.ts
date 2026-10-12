@@ -9,6 +9,7 @@ import {
   resumenMuestras,
   sumarDias,
   sumarMeses,
+  claveUnica,
   textoLimite,
 } from './evaluar';
 
@@ -134,5 +135,23 @@ describe('sumarMeses', () => {
   it('conserva el día y ajusta fin de mes', () => {
     expect(sumarMeses('2026-08-01', 6)).toBe('2027-02-01');
     expect(sumarMeses('2026-08-31', 6)).toBe('2027-02-28');
+  });
+});
+
+describe('claveUnica', () => {
+  const base = { ...def, codigo: 'x' };
+  it('arma la clave según la regla del formato', () => {
+    expect(claveUnica({ ...base, unicidad: 'dia' }, { fecha: '2026-10-12' })).toBe('x|2026-10-12');
+    expect(claveUnica({ ...base, unicidad: 'dia-area' }, { fecha: '2026-10-12', area: 'Tienda' })).toBe('x|2026-10-12|Tienda');
+    expect(claveUnica({ ...base, unicidad: 'dia-area' }, { fecha: '2026-10-12' })).toBeNull();
+    expect(claveUnica({ ...base, unicidad: 'lote' }, { fecha: '2026-10-12', lote: ' 28 950 ' })).toBe('x|lote|28950');
+    expect(claveUnica(base, { fecha: '2026-10-12' })).toBeNull();
+  });
+});
+
+describe('ausencias', () => {
+  it('una persona que no asistió no genera desviaciones aunque tenga celdas marcadas', () => {
+    const d = desviaciones(def, ctx({ tMasa: 25, apariencia: 'Conforme', higiene: { o1: { _ausente: 'si', mascarilla: 'falla' } } }, crudo));
+    expect(d).toEqual([]);
   });
 });

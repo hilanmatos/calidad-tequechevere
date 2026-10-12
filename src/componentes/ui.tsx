@@ -2,11 +2,25 @@ import {
   CircleAlert, CircleCheck, CircleHelp, LoaderCircle, Scale, Shirt, Droplets, ThermometerSnowflake,
   CookingPot, type LucideIcon,
 } from 'lucide-react';
-import { createContext, useCallback, useContext, useState, type ButtonHTMLAttributes, type ReactNode, type SVGProps } from 'react';
+import { createContext, useCallback, useContext, useRef, useState, type ButtonHTMLAttributes, type ReactNode, type SVGProps } from 'react';
 import type { Estado, Severidad } from '../motor/tipos';
 
 export function cx(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(' ');
+}
+
+/**
+ * Evita que un doble toque accidental en la tablet deshaga la acción del primero.
+ * Devuelve true cuando el toque debe ignorarse (mismo botón, menos de 400 ms).
+ */
+export function useToqueSeguro(ms = 400) {
+  const ultimo = useRef<Record<string, number>>({});
+  return useCallback((clave: string) => {
+    const ahora = Date.now();
+    const previo = ultimo.current[clave];
+    ultimo.current[clave] = ahora;
+    return previo !== undefined && ahora - previo < ms;
+  }, [ms]);
 }
 
 // ───────────── Íconos propios ─────────────

@@ -127,12 +127,17 @@ export interface ColumnaChecklist {
   aplica?: (ctx: Contexto) => boolean;
 }
 
-/** Filas = operarios activos del área. Valor: { [operarioId]: { [columnaId]: estadoId, _obs?: string } } */
+/** Filas = operarios activos del área.
+ * Valor: { [operarioId]: { [columnaId]: estadoId, _obs?: string } } o { _ausente: 'si' } si no asistió. */
 export interface CampoChecklist extends CampoBase {
   tipo: 'checklist';
   columnas: ColumnaChecklist[];
   estados: EstadoCelda[];
   porDefecto: string;
+  /** Estados que se alternan al tocar una celda (por defecto, todos). */
+  ciclo?: string[];
+  /** Permite marcar a una persona como "no asistió": sale del monitoreo de ese día. */
+  permiteAusencia?: boolean;
   /** Cómo se nombra la desviación de una columna (por defecto, la etiqueta de la columna). */
   etiquetaDesviacion?: (columna: string) => string;
 }
@@ -195,6 +200,10 @@ export interface DefinicionFormato {
   /** Áreas disponibles si el formato se llena por área. */
   areas?: string[];
   frecuencia: 'diaria' | 'por-produccion';
+  /** Qué impide repetir un registro: uno por día, uno por día y área, o uno por lote. */
+  unicidad?: 'dia' | 'dia-area' | 'lote';
+  /** Áreas que deben quedar registradas cada día (formatos 'dia-area'). */
+  areasDiarias?: string[];
   etapas: Etapa[];
 }
 

@@ -27,8 +27,7 @@ export const PRODUCTOS_DEMO: SinId<Producto>[] = [
 
 /** Nombres ficticios: los operarios reales viven solo en Supabase. */
 export const OPERARIOS_DEMO: SinId<Operario>[] = [
-  ...['María González', 'José Rodríguez', 'Luis Mendoza', 'Carmen Vega', 'Pedro Sánchez', 'Rosa Díaz', 'Iván Castro'].map((nombre) => ({ nombre, area: 'Tequeños', activo: true })),
+  ...['María González', 'José Rodríguez', 'Luis Mendoza', 'Carmen Vega', 'Pedro Sánchez', 'Rosa Díaz', 'Iván Castro', 'Andrés Navarro', 'Lucía Ortega']
+    .map((nombre) => ({ nombre, area: 'Planta Alta', activo: true })),
   ...['Ana Castillo', 'Jorge Torres', 'Elena Ruiz', 'Raúl Pinto'].map((nombre) => ({ nombre, area: 'Gluten Free', activo: true })),
-  ...['Sofía Morales', 'Daniel Herrera'].map((nombre) => ({ nombre, area: 'Tienda', activo: true })),
-  ...['Andrés Navarro', 'Lucía Ortega'].map((nombre) => ({ nombre, area: 'Planta Alta', activo: true })),
 ];

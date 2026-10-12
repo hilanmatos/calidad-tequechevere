@@ -86,6 +86,10 @@ export async function exportarRegistros(registros: Registro[], op: Opciones) {
       encabezar(ws, def, op, ['Fecha', 'Área', 'Operario', ...cols.map((c) => c.etiqueta), 'Observación', 'Realizado por']);
       for (const r of rs) {
         for (const [opId, fila] of Object.entries((r.datos[checklist.id] ?? {}) as ValorChecklist)) {
+          if (fila._ausente) {
+            ws.addRow([fechaCorta(r.fecha), r.area ?? '', nombreOp(opId), 'No asistió', ...cols.slice(1).map(() => ''), fila._obs ?? '', r.realizadoPor]);
+            continue;
+          }
           const row = ws.addRow([
             fechaCorta(r.fecha), r.area ?? '', nombreOp(opId),
             ...cols.map((c) => checklist.estados.find((e) => e.id === fila[c.id])?.etiqueta ?? ''),

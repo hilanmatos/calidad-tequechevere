@@ -1,13 +1,14 @@
-import { MessageSquarePlus } from 'lucide-react';
+import { Check, MessageSquarePlus, Undo2, UserX } from 'lucide-react';
 import { useState } from 'react';
+import { DESCRIPCION_AREA } from '../../formatos/comunes';
 import { operariosDelArea, type ValorChecklist } from '../../motor/materializar';
 import type { CampoChecklist, Contexto, EstadoCelda } from '../../motor/tipos';
-import { cx } from '../ui';
+import { cx, useToqueSeguro } from '../ui';
 
-const TONO: Record<EstadoCelda['tono'], string> = {
-  ok: 'bg-ok-claro text-ok border-ok/40',
-  fuera: 'bg-fuera text-white border-fuera',
-  neutro: 'bg-white text-tinta-suave border-linea',
+const TONO: Record<EstadoCelda['tono'], { chip: string; icono: string }> = {
+  ok: { chip: 'border-ok/40 bg-ok-claro/60 text-tinta', icono: 'bg-ok text-white' },
+  fuera: { chip: 'border-fuera bg-fuera text-white', icono: 'bg-white text-fuera' },
+  neutro: { chip: 'border-linea bg-white text-tinta-suave', icono: 'bg-escarcha-2 text-tinta-suave' },
 };
 
 export function EntradaChecklist({ campo, valor, ctx, cambiar }: {
@@ -16,107 +17,149 @@ export function EntradaChecklist({ campo, valor, ctx, cambiar }: {
   const v = (valor ?? {}) as ValorChecklist;
   const operarios = operariosDelArea(ctx);
   const columnas = campo.columnas.filter((c) => !c.aplica || c.aplica(ctx));
-  const estados = campo.estados;
-  const [notaAbierta, setNotaAbierta] = useState<string>();
+  const ciclo = campo.ciclo ?? campo.estados.map((e) => e.id);
+  const okId = campo.estados.find((e) => e.tono === 'ok')!.id;
+  const malId = campo.estados.find((e) => e.tono === 'fuera')!.id;
+  const [notas, setNotas] = useState<Set<string>>(() => new Set(Object.keys(v).filter((k) => v[k]?._obs)));
+  const toque = useToqueSeguro();
 
   if (!ctx.area) return <p className="text-tinta-suave">Elige el área en el primer paso.</p>;
-  if (operarios.length === 0) {
-    return <p className="text-tinta-suave">No hay operarios activos en {ctx.area}. Agrégalos en Admin.</p>;
-  }
+  if (operarios.length === 0) return <p className="text-tinta-suave">No hay operarios activos en {ctx.area}. Agrégalos en Admin.</p>;
 
+  const ausente = (o: string) => !!v[o]?._ausente;
+  const presentes = operarios.filter((o) => !ausente(o.id));
+  const ausentes = operarios.filter((o) => ausente(o.id));
   const estadoDe = (o: string, c: string) => v[o]?.[c] ?? campo.porDefecto;
-  const fijar = (o: string, c: string, e: string) => cambiar({ ...v, [o]: { ...v[o], [c]: e } });
-  const ciclar = (o: string, c: string) => {
-    const i = estados.findIndex((e) => e.id === estadoDe(o, c));
-    fijar(o, c, estados[(i + 1) % estados.length].id);
+  const fijarFila = (o: string, fila: Record<string, string>) => cambiar({ ...v, [o]: fila });
+
+  const alternar = (o: string, c: string) => {
+    if (toque(`${o}:${c}`)) return;
+    const i = ciclo.indexOf(estadoDe(o, c));
+    fijarFila(o, { ...v[o], [c]: i < 0 ? ciclo[0] : ciclo[(i + 1) % ciclo.length] });
   };
-  const okId = estados.find((e) => e.tono === 'ok')!.id;
+  const marcarAusente = (o: string, siNo: boolean) => {
+    if (toque(`${o}:ausente`)) return;
+    const fila: Record<string, string> = siNo ? { _ausente: 'si' } : {};
+    if (v[o]?._obs) fila._obs = v[o]._obs;
+    fijarFila(o, fila);
+  };
   const marcarColumna = (c: string) => {
+    if (toque(`col:${c}`)) return;
     const nuevo = { ...v };
-    for (const o of operarios) {
-      const actual = estadoDe(o.id, c);
-      if (actual === campo.porDefecto) nuevo[o.id] = { ...nuevo[o.id], [c]: okId };
-    }
+    for (const o of presentes) if (estadoDe(o.id, c) === campo.porDefecto) nuevo[o.id] = { ...nuevo[o.id], [c]: okId };
     cambiar(nuevo);
   };
-  const fijarNota = (o: string, nota: string) => cambiar({ ...v, [o]: { ...v[o], _obs: nota } });
+  const alternarNota = (o: string) => setNotas((s) => {
+    const n = new Set(s);
+    if (n.has(o)) n.delete(o); else n.add(o);
+    return n;
+  });
+
+  const fallas = presentes.reduce((n, o) => n + columnas.filter((c) => estadoDe(o.id, c.id) === malId).length, 0);
+  // Las acciones masivas solo sirven cuando las celdas arrancan "pendientes" (lavado de manos).
+  const conPendientes = campo.porDefecto !== okId;
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap gap-3 text-sm text-tinta-suave">
-        {estados.map((e) => (
-          <span key={e.id} className="inline-flex items-center gap-1.5">
-            <span className={cx('inline-grid place-items-center size-6 rounded-md border text-xs font-bold', TONO[e.tono])}>{e.corta}</span>
-            {e.etiqueta}
-          </span>
-        ))}
-        <span>Toca una celda para cambiarla.</span>
-      </div>
-      <div className="overflow-x-auto -mx-4 px-4">
-        <table className="border-separate border-spacing-1 min-w-full">
-          <thead>
-            <tr>
-              <th className="sticky left-0 bg-inherit text-left text-sm font-bold text-tinta-suave px-2 min-w-40">Operario</th>
-              {columnas.map((c) => (
-                <th key={c.id} className="align-bottom px-1 min-w-16 max-w-24">
+    <div className="flex flex-col gap-4">
+      <p className="text-tinta-suave">
+        {DESCRIPCION_AREA[ctx.area] && <span className="block text-sm">{ctx.area}: {DESCRIPCION_AREA[ctx.area]}.</span>}
+        {presentes.length} {presentes.length === 1 ? 'persona presente' : 'personas presentes'}
+        {ausentes.length > 0 && `, ${ausentes.length} no ${ausentes.length === 1 ? 'asistió' : 'asistieron'}`}.{' '}
+        <strong className={fallas ? 'text-fuera' : 'text-ok'}>
+          {fallas === 0 ? 'Sin fallas marcadas.' : `${fallas} ${fallas === 1 ? 'falla marcada' : 'fallas marcadas'}.`}
+        </strong>
+      </p>
+
+      {conPendientes && presentes.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <span className="font-bold">Marcar a todos los presentes como lavados:</span>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {columnas.map((c) => (
+              <button
+                key={c.id} type="button" onClick={() => marcarColumna(c.id)}
+                className="min-h-12 rounded-xl border-2 border-vino/30 bg-white px-3 font-bold text-vino active:bg-dorado-claro"
+              >
+                {c.etiqueta}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="grid lg:grid-cols-2 gap-3">
+        {presentes.map((o) => {
+          const fueraFila = columnas.filter((c) => estadoDe(o.id, c.id) === malId).length;
+          const verNota = notas.has(o.id);
+          return (
+            <section key={o.id} className={cx('rounded-2xl border-2 bg-white p-3 flex flex-col gap-3', fueraFila ? 'border-fuera/50' : 'border-linea')}>
+              <div className="flex items-center gap-2">
+                <h3 className="font-display text-lg font-bold flex-1 min-w-0 truncate">{o.nombre}</h3>
+                {fueraFila > 0 && <span className="rounded-full bg-fuera px-2.5 py-0.5 text-sm font-bold text-white">{fueraFila} ✗</span>}
+                <button
+                  type="button" aria-label={`Observación de ${o.nombre}`} aria-pressed={verNota} onClick={() => alternarNota(o.id)}
+                  className={cx('size-11 shrink-0 rounded-xl grid place-items-center border-2', v[o.id]?._obs ? 'border-dorado bg-dorado-claro text-vino' : 'border-linea text-tinta-suave')}
+                >
+                  <MessageSquarePlus size={20} />
+                </button>
+                {campo.permiteAusencia && (
                   <button
-                    type="button" onClick={() => marcarColumna(c.id)}
-                    title={`Marcar "${estados.find((e) => e.id === okId)!.etiqueta}" en los pendientes`}
-                    className="text-xs font-bold leading-tight text-tinta hover:text-vino w-full"
+                    type="button" onClick={() => marcarAusente(o.id, true)}
+                    className="h-11 shrink-0 rounded-xl border-2 border-linea px-3 text-sm font-bold text-tinta-suave flex items-center gap-1.5 active:bg-escarcha-2"
                   >
-                    {c.etiqueta}
+                    <UserX size={16} aria-hidden /> No asistió
                   </button>
-                </th>
-              ))}
-              <th className="w-12" aria-label="Observación" />
-            </tr>
-          </thead>
-          <tbody>
-            {operarios.map((o) => (
-              <tr key={o.id}>
-                <th scope="row" className="sticky left-0 bg-white/95 text-left font-bold px-2 py-1 rounded-lg whitespace-nowrap">
-                  {o.nombre}
-                  {v[o.id]?._obs && <span className="block text-xs font-normal text-tinta-suave max-w-48 truncate">{v[o.id]._obs}</span>}
-                </th>
+                )}
+              </div>
+
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-2">
                 {columnas.map((c) => {
-                  const e = estados.find((x) => x.id === estadoDe(o.id, c.id)) ?? estados[0];
+                  const e = campo.estados.find((x) => x.id === estadoDe(o.id, c.id)) ?? campo.estados[0];
+                  const t = TONO[e.tono];
                   return (
-                    <td key={c.id}>
-                      <button
-                        type="button" onClick={() => ciclar(o.id, c.id)}
-                        aria-label={`${o.nombre}, ${c.etiqueta}: ${e.etiqueta}`}
-                        className={cx('size-14 w-full min-w-14 rounded-xl border-2 text-xl font-bold transition-colors', TONO[e.tono])}
-                      >
-                        {e.corta}
-                      </button>
-                    </td>
+                    <button
+                      key={c.id} type="button" onClick={() => alternar(o.id, c.id)}
+                      aria-label={`${o.nombre}, ${c.etiqueta}: ${e.etiqueta}`}
+                      className={cx('min-h-14 rounded-xl border-2 px-2.5 py-2 flex items-center gap-2 text-left font-bold leading-tight transition-colors', t.chip)}
+                    >
+                      <span className={cx('size-7 shrink-0 rounded-full grid place-items-center text-sm', t.icono)} aria-hidden>
+                        {e.tono === 'ok' ? <Check size={16} strokeWidth={3} /> : e.corta}
+                      </span>
+                      <span className="text-[15px]">{c.etiqueta}</span>
+                    </button>
                   );
                 })}
-                <td>
-                  <button
-                    type="button" onClick={() => setNotaAbierta(notaAbierta === o.id ? undefined : o.id)}
-                    aria-label={`Observación de ${o.nombre}`}
-                    className={cx('size-12 rounded-xl grid place-items-center', v[o.id]?._obs ? 'bg-dorado-claro text-vino' : 'text-tinta-suave hover:bg-escarcha-2')}
-                  >
-                    <MessageSquarePlus size={20} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+              </div>
+
+              {verNota && (
+                <input
+                  aria-label={`Observación de ${o.nombre}`}
+                  className="h-12 rounded-xl border border-linea bg-white px-4 outline-none focus:border-vino"
+                  value={v[o.id]?._obs ?? ''}
+                  onChange={(e) => fijarFila(o.id, { ...v[o.id], _obs: e.target.value })}
+                  placeholder="Ej. uñas largas, mascarilla abajo"
+                />
+              )}
+            </section>
+          );
+        })}
       </div>
-      {notaAbierta && (
-        <label className="flex flex-col gap-1.5 font-bold">
-          Observación de {operarios.find((o) => o.id === notaAbierta)?.nombre}
-          <input
-            autoFocus
-            className="h-12 rounded-xl border border-linea bg-white px-4 font-normal outline-none focus:border-vino"
-            value={v[notaAbierta]?._obs ?? ''}
-            onChange={(e) => fijarNota(notaAbierta, e.target.value)}
-            placeholder="Ej. uñas largas, mascarilla abajo"
-          />
-        </label>
+
+      {ausentes.length > 0 && (
+        <div className="rounded-2xl border-2 border-dashed border-linea p-3">
+          <p className="font-bold text-tinta-suave mb-2">No asistieron hoy (no cuentan en el monitoreo)</p>
+          <ul className="flex flex-wrap gap-2">
+            {ausentes.map((o) => (
+              <li key={o.id}>
+                <button
+                  type="button" onClick={() => marcarAusente(o.id, false)}
+                  className="h-11 rounded-full border-2 border-linea bg-white pl-4 pr-3 font-bold flex items-center gap-2 text-tinta-suave"
+                >
+                  {o.nombre} <Undo2 size={16} aria-label="Volver a incluir" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );

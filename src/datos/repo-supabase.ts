@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Operario, Producto } from '../motor/tipos';
-import type { CambioRegistro, Perfil, Registro, Repositorio, Usuario } from './repositorio';
+import { DiaCerrado, RegistroDuplicado, type CambioRegistro, type CierreDia, type Perfil, type Registro, type Repositorio, type Usuario } from './repositorio';
 
 type Fila = Record<string, any>;
 
@@ -55,9 +55,18 @@ export const aRegistro = (f: Fila): Registro => ({
   fotos: f.fotos ?? [],
   origen: f.origen,
   realizadoPor: f.realizado_por ?? '',
+  claveUnica: f.clave_unica ?? undefined,
   creadoPor: f.creado_por ?? undefined,
   creadoEn: f.creado_en,
   actualizadoEn: f.actualizado_en ?? undefined,
+});
+
+const aCierre = (f: Fila): CierreDia => ({
+  fecha: f.fecha,
+  cerradoPor: f.cerrado_por ?? undefined,
+  cerradoPorNombre: f.cerrado_por_nombre,
+  cerradoEn: f.cerrado_en,
+  resumen: f.resumen ?? { registros: 0, desviaciones: 0, pendientes: [] },
 });
 
 const comprobar = <T>(r: { data: T; error: { message: string } | null }): T => {
@@ -154,12 +163,22 @@ export function repoSupabase(sb: SupabaseClient): Repositorio {
         observaciones: r.observaciones ?? null,
         fotos: r.fotos,
         realizado_por: r.realizadoPor,
+        clave_unica: r.claveUnica ?? null,
       };
-      if (r.id) {
-        return aRegistro(comprobar(await sb.from('registros').update(fila).eq('id', r.id).select().single()) as Fila);
+      const { data: auth } = await sb.auth.getUser();
+      const res = r.id
+        ? await sb.from('registros').update(fila).eq('id', r.id).select().single()
+        : await sb.from('registros').insert({ ...fila, creado_por: auth.user?.id, origen: 'app' }).select().single();
+      if (res.error) {
+        if (res.error.code === '23505') throw new RegistroDuplicado();
+        const cerrado = await sb.from('cierres_dia').select('fecha').eq('fecha', r.fecha).maybeSingle();
+        if (cerrado.data) throw new DiaCerrado();
+        if (res.error.code === '42501' || res.error.code === 'PGRST116') {
+          throw new Error('No tienes permiso para guardar este registro. Solo se editan los registros propios del mismo día.');
+        }
+        throw new Error(res.error.message);
       }
-      const { data } = await sb.auth.getUser();
-      return aRegistro(comprobar(await sb.from('registros').insert({ ...fila, creado_por: data.user?.id, origen: 'app' }).select().single()) as Fila);
+      return aRegistro(res.data as Fila);
     },
     async eliminarRegistro(id) {
       comprobar(await sb.from('registros').delete().eq('id', id));
@@ -174,6 +193,23 @@ export function repoSupabase(sb: SupabaseClient): Repositorio {
         antes: aRegistro(f.antes),
         despues: f.despues ? aRegistro(f.despues) : undefined,
       }));
+    },
+
+    async cierres(desde, hasta) {
+      const filas = comprobar(await sb.from('cierres_dia').select('*').gte('fecha', desde).lte('fecha', hasta)) as Fila[];
+      return filas.map(aCierre);
+    },
+    async cerrarDia(c) {
+      const { data } = await sb.auth.getUser();
+      const res = await sb.from('cierres_dia')
+        .insert({ fecha: c.fecha, cerrado_por: data.user?.id, cerrado_por_nombre: c.cerradoPorNombre, resumen: c.resumen })
+        .select().single();
+      if (res.error?.code === '23505') throw new Error('Este día ya estaba cerrado.');
+      if (res.error) throw new Error(res.error.message);
+      return aCierre(res.data as Fila);
+    },
+    async reabrirDia(fecha) {
+      comprobar(await sb.from('cierres_dia').delete().eq('fecha', fecha));
     },
 
     async subirFoto(archivo, nombre) {

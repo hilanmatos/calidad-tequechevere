@@ -1,6 +1,6 @@
 import { formato } from '../formatos';
 import {
-  camposVisibles, desviaciones, etapasVisibles, hayPcc, limiteDe, sumarDias,
+  camposVisibles, claveUnica, desviaciones, etapasVisibles, hayPcc, limiteDe, sumarDias,
 } from '../motor/evaluar';
 import type { Campo, Contexto, FilaMuestras, Operario, Producto, Valores } from '../motor/tipos';
 import { OPERARIOS_DEMO, PRODUCTOS_DEMO } from './catalogo-demo';
@@ -77,6 +77,7 @@ function valorDemo(campo: Campo, ctx: Contexto, r: () => number): unknown {
       const bueno = campo.estados.find((e) => e.tono === 'ok')!.id;
       const valor: Record<string, Record<string, string>> = {};
       for (const o of ops) {
+        if (r() < 0.05) { valor[o.id] = { _ausente: 'si' }; continue; }
         const fila: Record<string, string> = {};
         for (const c of campo.columnas) {
           if (c.aplica && !c.aplica(ctx)) continue;
@@ -88,7 +89,7 @@ function valorDemo(campo: Campo, ctx: Contexto, r: () => number): unknown {
     }
     case 'muestras': {
       const prods = (ctx.productos ?? []).filter((x) => campo.lineas.includes(x.linea));
-      const ops = (ctx.operarios ?? []).filter((o) => o.area === (campo.lineas.includes('cq-l1-tequenos') ? 'Tequeños' : 'Gluten Free'));
+      const ops = (ctx.operarios ?? []).filter((o) => o.area === (campo.lineas.includes('cq-l4-almond') ? 'Gluten Free' : 'Planta Alta'));
       const filas: FilaMuestras[] = [];
       const n = 3 + Math.floor(r() * 3);
       for (let i = 0; i < n; i++) {
@@ -141,6 +142,7 @@ function crearRegistro(
     fotos: [],
     origen: 'app',
     realizadoPor: 'Asistente de Calidad',
+    claveUnica: claveUnica(def, { fecha, area: base.area, lote: base.lote }) ?? undefined,
     creadoPor: 'demo',
     creadoEn: `${fecha}T${hora ?? '10:00'}:00-05:00`,
   };
@@ -163,12 +165,10 @@ export function generarDemo(hoy: string, dias = 45) {
     const sale = (prob: number) => !esHoy && r() < prob;
 
     registros.push(crearRegistro('temp-cuartos', fecha, '07:30', r, base));
-    if (!esHoy) registros.push(crearRegistro('temp-cuartos', fecha, '14:00', r, base));
-    registros.push(crearRegistro('higiene-uniforme', fecha, undefined, r, { ...base, area: 'Tequeños' }));
-    if (sale(0.9)) registros.push(crearRegistro('higiene-uniforme', fecha, undefined, r, { ...base, area: 'Gluten Free' }));
-    if (sale(0.5)) registros.push(crearRegistro('higiene-uniforme', fecha, undefined, r, { ...base, area: 'Tienda' }));
-    if (sale(0.5)) registros.push(crearRegistro('higiene-uniforme', fecha, undefined, r, { ...base, area: 'Planta Alta' }));
-    if (!esHoy) registros.push(crearRegistro('lavado-manos', fecha, undefined, r, { ...base, area: 'Tequeños' }));
+    registros.push(crearRegistro('higiene-uniforme', fecha, undefined, r, { ...base, area: 'Planta Alta' }));
+    if (sale(0.95)) registros.push(crearRegistro('higiene-uniforme', fecha, undefined, r, { ...base, area: 'Gluten Free' }));
+    if (!esHoy) registros.push(crearRegistro('lavado-manos', fecha, undefined, r, { ...base, area: 'Planta Alta' }));
+    if (sale(0.95)) registros.push(crearRegistro('lavado-manos', fecha, undefined, r, { ...base, area: 'Gluten Free' }));
 
     const lineas: [string, number][] = [
       ['cq-l1-tequenos', 1], ['cq-l1-tequenos', 0.7], ['cq-l2-empanadas-trigo', 0.5], ['cq-l3-empanadas-maiz', 0.4],

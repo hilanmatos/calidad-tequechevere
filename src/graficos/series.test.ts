@@ -86,7 +86,7 @@ describe('higiene y lavado', () => {
   it('calcula cumplimiento de lavado ignorando pendientes y ausentes', () => {
     const m = lavadoMapa([reg({
       formato: 'lavado-manos', fecha: '2026-10-10',
-      datos: { lavado: { o1: { h0630: 'lavo', h0930: 'no', h1230: 'ausente', h1430: 'pendiente' } } },
+      datos: { lavado: { o1: { h0630: 'lavo', h0930: 'no', h1230: 'pendiente' }, o2: { _ausente: 'si' } } },
     })]);
     expect(m).toEqual([{ operarioId: 'o1', fecha: '2026-10-10', lavo: 1, total: 2 }]);
   });

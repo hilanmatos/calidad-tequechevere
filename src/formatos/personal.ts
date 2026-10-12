@@ -13,16 +13,20 @@ export const higieneUniforme: DefinicionFormato = {
   usaHora: false,
   areas: AREAS,
   frecuencia: 'diaria',
+  unicidad: 'dia-area',
+  areasDiarias: AREAS,
   etapas: [
     {
       id: 'revision', titulo: 'Revisión del personal',
-      descripcion: 'Todos arrancan en "cumple". Toca solo lo que falla.',
+      descripcion: 'Todos arrancan en "cumple". Toca solo lo que falla; otro toque lo devuelve a "cumple".',
       campos: [
         {
           id: 'revision',
           etiqueta: 'Personal del área',
           tipo: 'checklist',
           porDefecto: 'cumple',
+          ciclo: ['cumple', 'falla'],
+          permiteAusencia: true,
           estados: [
             { id: 'cumple', etiqueta: 'Cumple', corta: '✓', tono: 'ok' },
             { id: 'falla', etiqueta: 'Falla', corta: '✗', tono: 'fuera' },
@@ -60,22 +64,25 @@ export const lavadoManos: DefinicionFormato = {
   usaHora: false,
   areas: AREAS,
   frecuencia: 'diaria',
+  unicidad: 'dia-area',
+  areasDiarias: AREAS,
   etapas: [
     {
       id: 'lavado', titulo: 'Lavado por horario',
-      descripcion: 'Se completa durante el día; puedes volver a editarlo hasta medianoche.',
+      descripcion: 'Se completa durante el día: un toque marca que se lavó, otro que no se lavó. Puedes volver a abrirlo hasta que se cierre el día.',
       campos: [
         {
           id: 'lavado',
           etiqueta: 'Personal del área',
           tipo: 'checklist',
           porDefecto: 'pendiente',
+          ciclo: ['lavo', 'no'],
+          permiteAusencia: true,
           etiquetaDesviacion: (horario) => `Lavado de manos de las ${horario}`,
           estados: [
             { id: 'pendiente', etiqueta: 'Pendiente', corta: '·', tono: 'neutro' },
             { id: 'lavo', etiqueta: 'Se lavó', corta: '✓', tono: 'ok' },
             { id: 'no', etiqueta: 'No se lavó', corta: '✗', tono: 'fuera' },
-            { id: 'ausente', etiqueta: 'Ausente', corta: 'A', tono: 'neutro' },
           ],
           columnas: [
             { id: 'h0630', etiqueta: '6:30 a. m.' },

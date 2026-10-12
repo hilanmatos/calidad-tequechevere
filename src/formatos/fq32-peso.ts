@@ -27,6 +27,7 @@ const condicionesMasa: Campo[] = [
   pct('hMasa', 'Humedad de la masa', { decimales: 2, opcional: true }),
   { id: 'loteQueso', etiqueta: 'Lote del queso', tipo: 'texto', opcional: true },
   pct('hQueso', 'Humedad del queso', { decimales: 2, opcional: true }),
+  temp('tQueso', 'Temperatura del queso', { opcional: true }),
   { id: 'loteProducto', etiqueta: 'Lote del producto', tipo: 'texto', opcional: true },
   num('bandejasCiclo', 'Bandejas por ciclo', 'uds', { decimales: 0, opcional: true }),
 ];

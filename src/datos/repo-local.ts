@@ -1,9 +1,9 @@
 import { hoyPanama } from '../lib/fechas';
 import type { Operario, Producto } from '../motor/tipos';
 import { generarDemo } from './demo';
-import type { CambioRegistro, Perfil, Registro, Repositorio, Usuario } from './repositorio';
+import { DiaCerrado, RegistroDuplicado, type CambioRegistro, type CierreDia, type Perfil, type Registro, type Repositorio, type Usuario } from './repositorio';
 
-const CLAVE = 'calidad-chevere-demo-v1';
+const CLAVE = 'calidad-chevere-demo-v2';
 const CLAVE_SESION = 'calidad-chevere-demo-sesion';
 
 interface Almacen {
@@ -13,6 +13,7 @@ interface Almacen {
   historial: CambioRegistro[];
   perfiles: Perfil[];
   fotos: Record<string, string>;
+  cierres: CierreDia[];
 }
 
 const USUARIO_DEMO: Usuario = { id: 'demo', correo: 'demo@calidad.local', nombre: 'Asistente de Calidad', rol: 'admin' };
@@ -20,7 +21,10 @@ const USUARIO_DEMO: Usuario = { id: 'demo', correo: 'demo@calidad.local', nombre
 function leer(): Almacen {
   try {
     const crudo = localStorage.getItem(CLAVE);
-    if (crudo) return JSON.parse(crudo) as Almacen;
+    if (crudo) {
+      const guardado = JSON.parse(crudo) as Almacen;
+      return { ...guardado, cierres: guardado.cierres ?? [] };
+    }
   } catch {
     // almacenamiento no disponible o corrupto: se regenera
   }
@@ -30,6 +34,7 @@ function leer(): Almacen {
     historial: [],
     perfiles: [{ id: 'demo', correo: USUARIO_DEMO.correo, nombre: USUARIO_DEMO.nombre, rol: 'admin', activo: true }],
     fotos: {},
+    cierres: [],
   };
   guardar(almacen);
   return almacen;
@@ -96,6 +101,8 @@ export function repoLocal(): Repositorio {
     async guardarRegistro(r) {
       await pausa();
       const ahora = new Date().toISOString();
+      if (a.cierres.some((c) => c.fecha === r.fecha)) throw new DiaCerrado();
+      if (r.claveUnica && a.registros.some((x) => x.claveUnica === r.claveUnica && x.id !== r.id)) throw new RegistroDuplicado();
       if (r.id) {
         const previo = a.registros.find((x) => x.id === r.id);
         if (!previo) throw new Error('El registro ya no existe.');
@@ -119,6 +126,21 @@ export function repoLocal(): Repositorio {
     },
     async historial(id) {
       return a.historial.filter((h) => h.antes.id === id).sort((x, y) => y.en.localeCompare(x.en));
+    },
+
+    async cierres(desde, hasta) {
+      return a.cierres.filter((c) => c.fecha >= desde && c.fecha <= hasta);
+    },
+    async cerrarDia(c) {
+      if (a.cierres.some((x) => x.fecha === c.fecha)) throw new Error('Este día ya estaba cerrado.');
+      const cierre: CierreDia = { ...c, cerradoPor: 'demo', cerradoEn: new Date().toISOString() };
+      a.cierres.push(cierre);
+      guardar(a);
+      return cierre;
+    },
+    async reabrirDia(fecha) {
+      a.cierres = a.cierres.filter((c) => c.fecha !== fecha);
+      guardar(a);
     },
 
     async subirFoto(archivo) {

@@ -21,10 +21,13 @@ export function textoCampo(campo: Campo, ctx: Contexto): string {
     case 'foto':
       return 'Foto adjunta';
     case 'checklist': {
-      const filas = Object.values(v as ValorChecklist);
+      const todas = Object.values(v as ValorChecklist);
+      const filas = todas.filter((f) => !f._ausente);
+      const ausentes = todas.length - filas.length;
       const malos = new Set(campo.estados.filter((e) => e.tono === 'fuera').map((e) => e.id));
       const fallas = filas.reduce((n, f) => n + Object.entries(f).filter(([k, e]) => k !== '_obs' && malos.has(e)).length, 0);
-      return `${filas.length} personas revisadas, ${fallas} ${fallas === 1 ? 'falla' : 'fallas'}`;
+      const noVino = ausentes ? ` (${ausentes} no ${ausentes === 1 ? 'asistió' : 'asistieron'})` : '';
+      return `${filas.length} personas revisadas${noVino}, ${fallas} ${fallas === 1 ? 'falla' : 'fallas'}`;
     }
     case 'muestras': {
       const filas = v as FilaMuestras[];

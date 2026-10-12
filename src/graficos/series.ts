@@ -156,6 +156,7 @@ export function higienePorOperario(rs: Registro[]) {
   for (const r of rs) {
     if (r.formato !== 'higiene-uniforme') continue;
     for (const [opId, fila] of Object.entries((r.datos[campo.id] ?? {}) as ValorChecklist)) {
+      if (fila._ausente) continue;
       const m = mapa.get(opId) ?? { operarioId: opId, revisiones: 0, fallas: 0, notas: [] };
       for (const c of campo.columnas) {
         const e = fila[c.id];
@@ -178,8 +179,9 @@ export function lavadoMapa(rs: Registro[]) {
     const porOp = new Map<string, { lavo: number; total: number }>();
     for (const [opId, fila] of Object.entries((r.datos[campo.id] ?? {}) as ValorChecklist)) {
       const acc = porOp.get(opId) ?? { lavo: 0, total: 0 };
+      if (fila._ausente) continue;
       for (const [k, e] of Object.entries(fila)) {
-        if (k === '_obs') continue;
+        if (k.startsWith('_')) continue;
         if (e === 'lavo') { acc.lavo++; acc.total++; } else if (e === 'no') acc.total++;
       }
       porOp.set(opId, acc);

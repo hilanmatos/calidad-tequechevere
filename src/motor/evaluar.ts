@@ -90,6 +90,7 @@ function celdasFuera(campo: CampoChecklist, ctx: Contexto): { operarioId: string
   const columnas = columnasVisibles(campo, ctx);
   const res: { operarioId: string; columna: string }[] = [];
   for (const [operarioId, fila] of Object.entries(valor)) {
+    if (fila?._ausente) continue;
     for (const col of columnas) {
       if (malos.has(fila?.[col.id])) res.push({ operarioId, columna: col.etiqueta });
     }
@@ -252,4 +253,20 @@ export function sumarMeses(fecha: string, meses: number): string {
 export function vencimientoSugerido(ctx: Contexto): string | undefined {
   const meses = ctx.producto?.vidaUtilMeses;
   return meses ? sumarMeses(ctx.fecha, meses) : undefined;
+}
+
+/** Clave que no puede repetirse entre registros del mismo formato (null si se permiten varios). */
+export function claveUnica(def: DefinicionFormato, enc: { fecha: string; area?: string; lote?: string }): string | null {
+  switch (def.unicidad) {
+    case 'dia':
+      return `${def.codigo}|${enc.fecha}`;
+    case 'dia-area':
+      return enc.area ? `${def.codigo}|${enc.fecha}|${enc.area}` : null;
+    case 'lote': {
+      const lote = enc.lote?.trim().replace(/\s+/g, '').toUpperCase();
+      return lote ? `${def.codigo}|lote|${lote}` : null;
+    }
+    default:
+      return null;
+  }
 }

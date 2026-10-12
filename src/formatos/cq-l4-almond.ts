@@ -16,6 +16,7 @@ export const cqL4Almond: DefinicionFormato = {
   usaLote: true,
   usaHora: false,
   frecuencia: 'por-produccion',
+  unicidad: 'lote',
   etapas: [
     {
       id: 'masa', titulo: 'Masa',

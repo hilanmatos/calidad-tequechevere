@@ -129,4 +129,10 @@ export const etapaSensorial: Etapa = {
   ],
 };
 
-export const AREAS = ['Tequeños', 'Gluten Free', 'Tienda', 'Planta Alta'];
+/** Áreas de producción que se monitorean (la tienda no entra en el monitoreo). */
+export const AREAS = ['Planta Alta', 'Gluten Free'];
+
+export const DESCRIPCION_AREA: Record<string, string> = {
+  'Planta Alta': 'Tequeños, mini empanadas, discos y pastelitos',
+  'Gluten Free': 'Yuca Bites, Almond Bites y carimañola',
+};

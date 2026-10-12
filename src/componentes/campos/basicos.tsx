@@ -1,11 +1,26 @@
 import { Camera, Check, LoaderCircle, Trash2, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useRepo } from '../../datos/hooks';
 import { aNumero, estadoNumero, fmt, limiteDe, textoLimite } from '../../motor/evaluar';
 import type {
   CampoCalculado, CampoConforme, CampoFecha, CampoNumero, CampoOpcion, CampoTexto, Contexto, Limite,
 } from '../../motor/tipos';
 import { cx, TONO_ESTADO, useAvisar } from '../ui';
+
+/** La tecla "Siguiente" del teclado de la tablet salta al próximo campo de texto o número. */
+export function alSiguienteCampo(e: KeyboardEvent<HTMLInputElement>) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const campos = [...document.querySelectorAll<HTMLInputElement>('main input:not([type=checkbox]):not([type=file]):not([disabled]), main textarea')];
+  const i = campos.indexOf(e.currentTarget);
+  const siguiente = campos[i + 1];
+  if (siguiente) {
+    siguiente.focus();
+    siguiente.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  } else {
+    e.currentTarget.blur();
+  }
+}
 
 const claseEntrada =
   'h-14 w-full rounded-xl border border-linea bg-white px-4 text-2xl cifra outline-none focus:border-vino focus:ring-4 focus:ring-vino/10';
@@ -66,42 +81,52 @@ export function EntradaNumero({ campo, valor, ctx, cambiar }: { campo: CampoNume
 
   return (
     <div className="flex flex-col gap-2.5">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {esAmbiente ? (
-          <div className="h-14 flex-1 rounded-xl border border-ok/50 bg-ok-claro px-4 flex items-center text-xl font-bold text-ok">Ambiente</div>
+          <div className="h-14 flex-1 min-w-[9rem] rounded-xl border-2 border-ok bg-ok-claro px-4 flex items-center text-xl font-bold text-ok">Ambiente</div>
         ) : (
-          <div className="relative flex-1">
+          <div className="relative flex-1 min-w-[9rem]">
             <input
               aria-label={campo.etiqueta}
               inputMode="decimal"
               enterKeyHint="next"
+              autoComplete="off"
               className={claseEntrada}
               value={texto}
               onChange={(e) => escribir(e.target.value)}
+              onKeyDown={alSiguienteCampo}
               placeholder="—"
             />
-            {campo.unidad && <span className="absolute right-4 top-1/2 -translate-y-1/2 text-tinta-suave font-bold">{campo.unidad}</span>}
+            {campo.unidad && <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-tinta-suave font-bold">{campo.unidad}</span>}
           </div>
         )}
         {campo.unidad === '°C' && !esAmbiente && (
           <button
             type="button"
             onClick={invertirSigno}
-            className="h-14 w-14 rounded-xl border border-linea bg-white text-2xl font-bold text-vino hover:bg-escarcha"
+            className="h-14 w-14 shrink-0 rounded-xl border-2 border-linea bg-white text-2xl font-bold text-vino active:bg-dorado-claro"
             aria-label="Cambiar signo"
           >
             ±
           </button>
         )}
-        {campo.permiteAmbiente && (
+        {campo.permiteAmbiente && (esAmbiente ? (
           <button
             type="button"
-            onClick={() => { setTexto(''); cambiar(esAmbiente ? undefined : 'Ambiente'); }}
-            className={cx('h-14 rounded-xl border px-4 font-bold', esAmbiente ? 'border-ok bg-ok text-white' : 'border-linea bg-white text-tinta-suave')}
+            onClick={() => cambiar(undefined)}
+            className="h-14 shrink-0 rounded-xl border-2 border-linea bg-white px-4 font-bold text-tinta-suave"
+          >
+            Escribir valor
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => { setTexto(''); cambiar('Ambiente'); }}
+            className="h-14 shrink-0 rounded-xl border-2 border-linea bg-white px-4 font-bold text-tinta-suave active:bg-ok-claro"
           >
             Ambiente
           </button>
-        )}
+        ))}
       </div>
       {limite && !esAmbiente && <BarraLimite valor={n} limite={limite} />}
       <PieLimite limite={limite} unidad={campo.unidad} referencia={campo.referencia?.(ctx)} />
@@ -136,7 +161,7 @@ export function EntradaConforme({ campo, valor, cambiar }: { campo: CampoConform
     <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={campo.etiqueta}>
       <button
         type="button" role="radio" aria-checked={valor === bien}
-        onClick={() => cambiar(valor === bien ? undefined : bien)}
+        onClick={() => cambiar(bien)}
         className={cx('h-14 rounded-xl border-2 font-bold flex items-center justify-center gap-2 text-lg',
           valor === bien ? 'border-ok bg-ok text-white' : 'border-linea bg-white text-tinta hover:border-ok/60')}
       >
@@ -144,7 +169,7 @@ export function EntradaConforme({ campo, valor, cambiar }: { campo: CampoConform
       </button>
       <button
         type="button" role="radio" aria-checked={valor === mal}
-        onClick={() => cambiar(valor === mal ? undefined : mal)}
+        onClick={() => cambiar(mal)}
         className={cx('h-14 rounded-xl border-2 font-bold flex items-center justify-center gap-2 text-lg',
           valor === mal ? 'border-fuera bg-fuera text-white' : 'border-linea bg-white text-tinta hover:border-fuera/60')}
       >
@@ -156,21 +181,28 @@ export function EntradaConforme({ campo, valor, cambiar }: { campo: CampoConform
 
 export function EntradaOpcion({ campo, valor, cambiar }: { campo: CampoOpcion; valor: unknown; cambiar: (v: unknown) => void }) {
   return (
-    <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={campo.etiqueta}>
-      {campo.opciones.map((o) => {
-        const activo = valor === o;
-        const mala = campo.malas?.includes(o);
-        return (
-          <button
-            key={o} type="button" role="radio" aria-checked={activo}
-            onClick={() => cambiar(activo ? undefined : o)}
-            className={cx('min-h-12 px-4 rounded-xl border-2 font-bold flex-1 min-w-[7rem]',
-              activo ? (mala ? 'border-fuera bg-fuera text-white' : 'border-vino bg-vino text-white') : 'border-linea bg-white hover:border-vino/40')}
-          >
-            {o}
-          </button>
-        );
-      })}
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={campo.etiqueta}>
+        {campo.opciones.map((o) => {
+          const activo = valor === o;
+          const mala = campo.malas?.includes(o);
+          return (
+            <button
+              key={o} type="button" role="radio" aria-checked={activo}
+              onClick={() => cambiar(o)}
+              className={cx('min-h-14 px-4 rounded-xl border-2 font-bold flex-1 min-w-[7.5rem]',
+                activo ? (mala ? 'border-fuera bg-fuera text-white' : 'border-vino bg-vino text-white') : 'border-linea bg-white hover:border-vino/40')}
+            >
+              {o}
+            </button>
+          );
+        })}
+      </div>
+      {campo.opcional && valor !== undefined && (
+        <button type="button" onClick={() => cambiar(undefined)} className="self-start h-10 px-2 text-sm font-bold text-tinta-suave underline underline-offset-2">
+          Quitar respuesta
+        </button>
+      )}
     </div>
   );
 }
@@ -181,7 +213,7 @@ export function EntradaTexto({ campo, valor, cambiar }: { campo: CampoTexto; val
   return campo.multilinea ? (
     <textarea aria-label={campo.etiqueta} rows={3} className={cx(clase, 'py-3')} value={(valor as string) ?? ''} onChange={(e) => cambiar(e.target.value || undefined)} />
   ) : (
-    <input aria-label={campo.etiqueta} className={cx(clase, 'h-14')} value={(valor as string) ?? ''} onChange={(e) => cambiar(e.target.value || undefined)} />
+    <input aria-label={campo.etiqueta} enterKeyHint="next" className={cx(clase, 'h-14')} value={(valor as string) ?? ''} onChange={(e) => cambiar(e.target.value || undefined)} onKeyDown={alSiguienteCampo} />
   );
 }
 

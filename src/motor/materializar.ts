@@ -12,6 +12,10 @@ export function completarChecklist(campo: CampoChecklist, ctx: Contexto, valor: 
   const res: ValorChecklist = {};
   const columnas = campo.columnas.filter((c) => !c.aplica || c.aplica(ctx));
   for (const o of operariosDelArea(ctx)) {
+    if (valor?.[o.id]?._ausente) {
+      res[o.id] = { _ausente: 'si', ...(valor[o.id]._obs ? { _obs: valor[o.id]._obs } : {}) };
+      continue;
+    }
     const fila: Record<string, string> = {};
     for (const c of columnas) fila[c.id] = valor?.[o.id]?.[c.id] ?? campo.porDefecto;
     if (valor?.[o.id]?._obs) fila._obs = valor[o.id]._obs;

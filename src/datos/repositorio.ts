@@ -26,6 +26,8 @@ export interface Registro {
   fotos: string[];
   origen: 'app' | 'importado';
   realizadoPor: string;
+  /** Impide duplicados: un registro por día, por día y área, o por lote. */
+  claveUnica?: string;
   creadoPor?: string;
   creadoEn: string;
   actualizadoEn?: string;
@@ -46,6 +48,29 @@ export interface FiltroRegistros {
   desde: string;
   hasta: string;
   formato?: string;
+}
+
+export interface CierreDia {
+  fecha: string;
+  cerradoPor?: string;
+  cerradoPorNombre: string;
+  cerradoEn: string;
+  resumen: { registros: number; desviaciones: number; pendientes: string[] };
+}
+
+/** Error al guardar un registro que ya existe (clave única repetida). */
+export class RegistroDuplicado extends Error {
+  constructor() {
+    super('Ya existe un registro igual: este formato se llena una sola vez para ese día, área o lote.');
+    this.name = 'RegistroDuplicado';
+  }
+}
+
+export class DiaCerrado extends Error {
+  constructor() {
+    super('El día está cerrado. Pide al administrador que lo reabra para hacer cambios.');
+    this.name = 'DiaCerrado';
+  }
 }
 
 export interface Perfil {
@@ -75,6 +100,10 @@ export interface Repositorio {
   guardarRegistro(r: NuevoRegistro): Promise<Registro>;
   eliminarRegistro(id: string): Promise<void>;
   historial(id: string): Promise<CambioRegistro[]>;
+
+  cierres(desde: string, hasta: string): Promise<CierreDia[]>;
+  cerrarDia(c: Omit<CierreDia, 'cerradoEn' | 'cerradoPor'>): Promise<CierreDia>;
+  reabrirDia(fecha: string): Promise<void>;
 
   subirFoto(archivo: Blob, nombre: string): Promise<string>;
   urlFoto(ruta: string): Promise<string>;

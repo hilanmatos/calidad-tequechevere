@@ -35,6 +35,7 @@ export const tempCuartos: DefinicionFormato = {
   usaLote: false,
   usaHora: true,
   frecuencia: 'diaria',
+  unicidad: 'dia',
   etapas: [
     {
       id: 'pb', titulo: 'Planta baja',

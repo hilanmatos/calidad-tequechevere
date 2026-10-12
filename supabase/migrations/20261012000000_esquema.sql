@@ -85,6 +85,8 @@ create table public.registros (
   fotos text[] not null default '{}',
   origen text not null default 'app' check (origen in ('app', 'importado')),
   realizado_por text not null default '',
+  -- impide repetir: un registro por día, por día y área, o por lote (según el formato)
+  clave_unica text,
   creado_por uuid references public.perfiles (id),
   creado_en timestamptz not null default now(),
   actualizado_por uuid references public.perfiles (id),
@@ -93,6 +95,27 @@ create table public.registros (
 
 create index registros_fecha_idx on public.registros (fecha desc);
 create index registros_formato_fecha_idx on public.registros (formato, fecha desc);
+create unique index registros_clave_unica_idx on public.registros (clave_unica) where clave_unica is not null;
+
+-- ───────────── Cierre del día ─────────────
+-- Un día cerrado ya no admite registros nuevos ni ediciones, salvo que un administrador lo reabra.
+create table public.cierres_dia (
+  fecha date primary key,
+  cerrado_por uuid references public.perfiles (id),
+  cerrado_por_nombre text not null default '',
+  cerrado_en timestamptz not null default now(),
+  resumen jsonb not null default '{}'::jsonb
+);
+
+create or replace function public.dia_cerrado(f date)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (select 1 from public.cierres_dia where fecha = f);
+$$;
 
 create or replace function public.antes_de_guardar_registro()
 returns trigger
@@ -157,6 +180,7 @@ alter table public.operarios enable row level security;
 alter table public.productos enable row level security;
 alter table public.registros enable row level security;
 alter table public.registros_historial enable row level security;
+alter table public.cierres_dia enable row level security;
 
 create policy perfiles_leer on public.perfiles for select to authenticated using (true);
 create policy perfiles_admin on public.perfiles for update to authenticated using (public.es_admin()) with check (public.es_admin());
@@ -171,13 +195,14 @@ create policy productos_admin_upd on public.productos for update to authenticate
 
 create policy registros_leer on public.registros for select to authenticated using (true);
 create policy registros_crear on public.registros for insert to authenticated
-  with check (creado_por = auth.uid() and origen = 'app');
+  with check (creado_por = auth.uid() and origen = 'app' and (not public.dia_cerrado(fecha) or public.es_admin()));
 create policy registros_editar on public.registros for update to authenticated
   using (
     public.es_admin()
     or (
       creado_por = auth.uid()
       and (creado_en at time zone 'America/Panama')::date = (now() at time zone 'America/Panama')::date
+      and not public.dia_cerrado(fecha)
     )
   )
   with check (
@@ -185,11 +210,16 @@ create policy registros_editar on public.registros for update to authenticated
     or (
       creado_por = auth.uid()
       and (creado_en at time zone 'America/Panama')::date = (now() at time zone 'America/Panama')::date
+      and not public.dia_cerrado(fecha)
     )
   );
 create policy registros_borrar on public.registros for delete to authenticated using (public.es_admin());
 
 create policy historial_leer on public.registros_historial for select to authenticated using (true);
+
+create policy cierres_leer on public.cierres_dia for select to authenticated using (true);
+create policy cierres_cerrar on public.cierres_dia for insert to authenticated with check (cerrado_por = auth.uid());
+create policy cierres_reabrir on public.cierres_dia for delete to authenticated using (public.es_admin());
 
 -- ───────────── Fotos ─────────────
 insert into storage.buckets (id, name, public) values ('fotos', 'fotos', false)

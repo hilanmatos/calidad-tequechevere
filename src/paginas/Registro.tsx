@@ -192,7 +192,9 @@ function TablaChecklist({ campo, valor, ctx }: { campo: CampoChecklist; valor?: 
           {filas.map(([id, fila]) => (
             <tr key={id} className="border-t border-linea">
               <td className="p-2 font-bold whitespace-nowrap">{nombre(id)}</td>
-              {columnas.map((c) => {
+              {fila._ausente ? (
+                <td colSpan={columnas.length} className="p-2 text-tinta-suave italic">No asistió, no se incluye en el monitoreo del día</td>
+              ) : columnas.map((c) => {
                 const e = campo.estados.find((x) => x.id === fila[c.id]);
                 return (
                   <td key={c.id} className={cx('p-2 text-center font-bold', e?.tono === 'fuera' ? 'bg-fuera-claro text-fuera' : e?.tono === 'ok' ? 'text-ok' : 'text-tinta-suave')}>

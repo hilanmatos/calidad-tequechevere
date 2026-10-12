@@ -59,6 +59,7 @@ export const cqL2EmpanadasTrigo: DefinicionFormato = {
   usaLote: true,
   usaHora: false,
   frecuencia: 'por-produccion',
+  unicidad: 'lote',
   etapas: etapasEmpanadas(false),
 };
 
@@ -74,5 +75,6 @@ export const cqL3EmpanadasMaiz: DefinicionFormato = {
   usaLote: true,
   usaHora: false,
   frecuencia: 'por-produccion',
+  unicidad: 'lote',
   etapas: etapasEmpanadas(true),
 };

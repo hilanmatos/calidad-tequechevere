@@ -18,6 +18,7 @@ export const cqSalsaTartara: DefinicionFormato = {
   usaLote: true,
   usaHora: false,
   frecuencia: 'por-produccion',
+  unicidad: 'lote',
   etapas: [
     {
       id: 'generales', titulo: 'Ambiente y vegetales',
