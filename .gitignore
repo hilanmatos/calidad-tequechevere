@@ -16,3 +16,5 @@ __pycache__/
 supabase/.temp/
 supabase/.branches/
 *.tsbuildinfo
+# Contraseñas de las cuentas: solo en esta PC
+*.local.txt
