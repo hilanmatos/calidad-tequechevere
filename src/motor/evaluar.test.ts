@@ -8,6 +8,7 @@ import {
   faltantes,
   resumenMuestras,
   sumarDias,
+  sumarMeses,
   textoLimite,
 } from './evaluar';
 
@@ -126,5 +127,12 @@ describe('sumarDias', () => {
   it('suma días cruzando meses y años', () => {
     expect(sumarDias('2026-10-12', 180)).toBe('2027-04-10');
     expect(sumarDias('2026-12-31', 1)).toBe('2027-01-01');
+  });
+});
+
+describe('sumarMeses', () => {
+  it('conserva el día y ajusta fin de mes', () => {
+    expect(sumarMeses('2026-08-01', 6)).toBe('2027-02-01');
+    expect(sumarMeses('2026-08-31', 6)).toBe('2027-02-28');
   });
 });

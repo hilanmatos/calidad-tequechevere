@@ -239,3 +239,16 @@ export function sumarDias(fecha: string, dias: number): string {
   const t = new Date(Date.UTC(a, m - 1, d + dias));
   return t.toISOString().slice(0, 10);
 }
+
+/** Suma meses conservando el día; si el mes destino es más corto, usa su último día. */
+export function sumarMeses(fecha: string, meses: number): string {
+  const [a, m, d] = fecha.split('-').map(Number);
+  const ultimo = new Date(Date.UTC(a, m - 1 + meses + 1, 0)).getUTCDate();
+  const t = new Date(Date.UTC(a, m - 1 + meses, Math.min(d, ultimo)));
+  return t.toISOString().slice(0, 10);
+}
+
+export function vencimientoSugerido(ctx: Contexto): string | undefined {
+  const meses = ctx.producto?.vidaUtilMeses;
+  return meses ? sumarMeses(ctx.fecha, meses) : undefined;
+}

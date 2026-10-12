@@ -1,9 +1,10 @@
-export type Unidad = '°C' | '%' | 'g' | 'kg' | 'min' | 'mL/L' | 'pH' | 'L' | 'uds' | '';
+export type Unidad = '°C' | '%' | 'g' | 'kg' | 'min' | 's' | 'mL/L' | 'pH' | 'L' | 'uds' | '';
 
 export interface Limite {
   min?: number;
   max?: number;
-  /** Límite aún no validado por Calidad: se muestra en índigo y no bloquea. */
+  /** Límite aún no validado por Calidad: se muestra en índigo y no bloquea.
+   *  Sin min ni max significa "límite por definir". */
   porConfirmar?: boolean;
 }
 
@@ -19,7 +20,7 @@ export interface Producto {
   pesoUnidadMaxG?: number;
   pesoRellenoG?: number;
   pesoDeclaradoKg?: number;
-  vidaUtilDias?: number;
+  vidaUtilMeses?: number;
   llevaRelleno: boolean;
   esPrecocido: boolean;
   activo: boolean;
@@ -148,6 +149,8 @@ export interface FilaMuestras {
 export interface CampoMuestras extends CampoBase {
   tipo: 'muestras';
   nMuestras: number;
+  /** Códigos de formato de línea cuyos productos se pueden elegir. */
+  lineas: string[];
   columnasExtra?: ('lote' | 'vencimiento' | 'observacion')[];
 }
 
