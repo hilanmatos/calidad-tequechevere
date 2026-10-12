@@ -1,0 +1,18 @@
+node_modules/
+dist/
+dev-dist/
+.env.local
+.env.*.local
+*.log
+.DS_Store
+coverage/
+# Datos reales: nunca al repo público
+tools/importar/salida/
+*.xlsx
+*.xls
+*.docx
+__pycache__/
+.venv/
+supabase/.temp/
+supabase/.branches/
+*.tsbuildinfo
