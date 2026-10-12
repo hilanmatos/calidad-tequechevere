@@ -52,7 +52,7 @@ const titulo = (c: Campo) => {
   return `${c.etiqueta}${unidad ? ` (${unidad})` : ''}${c.pcc ? ` ${c.pcc}` : ''}`;
 };
 
-export async function exportarRegistros(registros: Registro[], op: Opciones) {
+export async function crearExcel(registros: Registro[], op: Opciones): Promise<Blob> {
   const ExcelJS = (await import('exceljs')).default;
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Calidad Chévere';
@@ -140,10 +140,18 @@ export async function exportarRegistros(registros: Registro[], op: Opciones) {
 
   if (wb.worksheets.length === 0) throw new Error('No hay registros para exportar.');
   const datos = await wb.xlsx.writeBuffer();
-  const url = URL.createObjectURL(new Blob([datos], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  return new Blob([datos], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+export function descargar(blob: Blob, nombre: string) {
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `Calidad Chévere ${op.desde} a ${op.hasta}.xlsx`;
+  a.download = nombre;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+export async function exportarRegistros(registros: Registro[], op: Opciones) {
+  descargar(await crearExcel(registros, op), `Calidad Chévere ${op.desde} a ${op.hasta}.xlsx`);
 }

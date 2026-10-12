@@ -36,6 +36,11 @@ export function useRegistro(id?: string) {
   return useQuery({ queryKey: ['registro', id], queryFn: () => repo.registro(id!), enabled: !!id });
 }
 
+export function useRegistroPorClave(clave: string | null) {
+  const repo = useRepo();
+  return useQuery({ queryKey: ['registros', 'clave', clave], queryFn: () => repo.porClave(clave!), enabled: !!clave });
+}
+
 export function useHistorial(id?: string) {
   const repo = useRepo();
   return useQuery({ queryKey: ['historial', id], queryFn: () => repo.historial(id!), enabled: !!id });
@@ -96,6 +101,7 @@ export function useCierre(fecha: string) {
     queryKey: ['cierres', fecha],
     queryFn: async () => (await repo.cierres(fecha, fecha))[0] ?? null,
     staleTime: 30_000,
+    enabled: !!fecha,
   });
 }
 

@@ -1,6 +1,7 @@
 import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { EnviarInforme } from '../componentes/EnviarInforme';
 import { Cargando, cx, Encabezado, MensajeError, Panel, Vacio } from '../componentes/ui';
 import { FORMATOS, formato } from '../formatos';
 import { CUARTOS } from '../formatos/temp-cuartos';
@@ -45,15 +46,18 @@ export function Tablero() {
         titulo="Tablero"
         subtitulo={`Del ${fechaCorta(desde)} al ${fechaCorta(hoy)}, comparado con los ${dias} días anteriores.`}
         accion={
+          <div className="flex flex-wrap items-center gap-3">
           <div className="flex rounded-xl bg-escarcha-2 p-1" role="radiogroup" aria-label="Período">
             {RANGOS.map((r) => (
               <button
                 key={r.id} type="button" role="radio" aria-checked={dias === r.id} onClick={() => setDias(r.id)}
-                className={cx('h-10 px-4 rounded-lg font-bold', dias === r.id ? 'bg-white text-vino shadow-sm' : 'text-tinta-suave')}
+                className={cx('h-11 px-4 rounded-lg font-bold', dias === r.id ? 'bg-white text-vino shadow-sm' : 'text-tinta-suave')}
               >
                 {r.texto}
               </button>
             ))}
+          </div>
+          <EnviarInforme desde={desde} hasta={hoy} titulo="Informe de calidad" />
           </div>
         }
       />

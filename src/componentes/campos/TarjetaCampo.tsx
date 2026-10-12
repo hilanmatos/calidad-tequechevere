@@ -20,7 +20,7 @@ export function TarjetaCampo({
     <div
       id={`campo-${id}`}
       className={cx(
-        'rounded-campo border-2 p-4 flex flex-col gap-3 transition-colors scroll-mt-40',
+        'min-w-0 rounded-campo border-2 p-4 flex flex-col gap-3 transition-colors scroll-mt-40',
         tono.borde, tono.fondo, ancho && 'md:col-span-2',
       )}
     >

@@ -50,7 +50,7 @@ export function Marco() {
           <div title={usuario.nombre} className="size-11 rounded-full bg-white/15 grid place-items-center font-display font-bold">
             {iniciales(usuario.nombre)}
           </div>
-          <button type="button" onClick={salir} className="flex flex-col items-center gap-1 text-xs text-white/70 hover:text-white">
+          <button type="button" onClick={salir} className="min-h-12 w-20 rounded-2xl flex flex-col items-center justify-center gap-1 text-xs text-white/70 hover:text-white hover:bg-white/10">
             <LogOut size={20} aria-hidden /> Salir
           </button>
         </div>
@@ -60,9 +60,9 @@ export function Marco() {
       <header className="no-imprimir lg:hidden sticky top-0 z-30 flex items-center gap-3 bg-vino text-white px-4 h-16">
         <img src="logo.png" alt="" className="size-10" />
         <span className="font-display text-xl font-extrabold">Calidad Chévere</span>
-        <button type="button" onClick={salir} className="ml-auto flex items-center gap-2 text-sm text-white/80">
-          <span className="size-9 rounded-full bg-white/15 grid place-items-center font-bold">{iniciales(usuario.nombre)}</span>
-          <LogOut size={18} aria-label="Salir" />
+        <button type="button" onClick={salir} className="ml-auto h-12 pl-1.5 pr-4 rounded-full flex items-center gap-2 text-sm font-bold text-white/90 bg-white/10">
+          <span className="size-9 rounded-full bg-white/15 grid place-items-center">{iniciales(usuario.nombre)}</span>
+          <LogOut size={18} aria-hidden /> Salir
         </button>
       </header>
 
@@ -71,7 +71,7 @@ export function Marco() {
           <span><strong>Modo demo.</strong> Datos de prueba guardados solo en este navegador; aún no está conectada la base de datos.</span>
           <button
             type="button"
-            className="inline-flex items-center gap-1 font-bold underline underline-offset-2"
+            className="inline-flex items-center gap-1 h-10 px-2 font-bold underline underline-offset-2"
             onClick={() => { reiniciarDemo(); location.reload(); }}
           >
             <RefreshCw size={14} aria-hidden /> Reiniciar demo

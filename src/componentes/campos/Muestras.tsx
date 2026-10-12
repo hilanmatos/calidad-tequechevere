@@ -2,6 +2,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { estadoNumero, fmt, limitePeso, resumenMuestras, textoLimite } from '../../motor/evaluar';
 import type { CampoMuestras, Contexto, FilaMuestras } from '../../motor/tipos';
 import { cx, TONO_ESTADO } from '../ui';
+import { alSiguienteCampo } from './basicos';
 
 const selectClase = 'h-12 w-full rounded-xl border border-linea bg-white px-3 font-bold outline-none focus:border-vino';
 
@@ -61,6 +62,8 @@ export function EntradaMuestras({ campo, valor, ctx, cambiar }: {
                     <span className="text-xs font-bold text-tinta-suave">M{k + 1}</span>
                     <input
                       inputMode="decimal"
+                      enterKeyHint="next"
+                      onKeyDown={alSiguienteCampo}
                       aria-label={`Muestra ${k + 1} en gramos`}
                       className={cx('h-12 w-full rounded-lg border-2 text-center text-lg cifra outline-none focus:ring-4 focus:ring-vino/10',
                         m === null ? 'border-linea' : est === 'fuera' ? 'border-fuera bg-fuera-claro text-fuera' : 'border-ok/50')}
@@ -85,7 +88,7 @@ export function EntradaMuestras({ campo, valor, ctx, cambiar }: {
                   <button
                     key={a} type="button" role="radio" aria-checked={f.apariencia === a}
                     onClick={() => fijar(i, { apariencia: f.apariencia === a ? undefined : a })}
-                    className={cx('h-11 px-4 rounded-xl border-2 font-bold',
+                    className={cx('h-12 px-4 rounded-xl border-2 font-bold',
                       f.apariencia === a ? (a === 'C' ? 'border-ok bg-ok text-white' : 'border-fuera bg-fuera text-white') : 'border-linea bg-white')}
                   >
                     {a === 'C' ? 'Cumple' : 'No cumple'}

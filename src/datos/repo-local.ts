@@ -98,6 +98,9 @@ export function repoLocal(): Repositorio {
     async registro(id) {
       return a.registros.find((r) => r.id === id) ?? null;
     },
+    async porClave(clave) {
+      return a.registros.find((r) => r.claveUnica === clave) ?? null;
+    },
     async guardarRegistro(r) {
       await pausa();
       const ahora = new Date().toISOString();

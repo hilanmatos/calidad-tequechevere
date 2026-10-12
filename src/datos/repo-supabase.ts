@@ -147,6 +147,10 @@ export function repoSupabase(sb: SupabaseClient): Repositorio {
       const f = comprobar(await sb.from('registros').select('*').eq('id', id).maybeSingle()) as Fila | null;
       return f ? aRegistro(f) : null;
     },
+    async porClave(clave) {
+      const f = comprobar(await sb.from('registros').select('*').eq('clave_unica', clave).maybeSingle()) as Fila | null;
+      return f ? aRegistro(f) : null;
+    },
     async guardarRegistro(r) {
       const fila: Fila = {
         formato: r.formato,

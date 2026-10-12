@@ -4,7 +4,7 @@ import { useSesion } from '../auth/Sesion';
 import { VistaFoto } from '../componentes/campos/basicos';
 import { Boton, Cargando, ChipEstadoRegistro, cx, IconoFormato, MensajeError, Panel, SEVERIDAD, TONO_ESTADO, useAvisar, Vacio } from '../componentes/ui';
 import { formato } from '../formatos';
-import { useEliminarRegistro, useHistorial, useOperarios, useProductos, useRegistro } from '../datos/hooks';
+import { useCierre, useEliminarRegistro, useHistorial, useOperarios, useProductos, useRegistro } from '../datos/hooks';
 import type { Registro } from '../datos/repositorio';
 import { fechaLarga, horaLegible, momentoLegible } from '../lib/fechas';
 import { textoCampo } from '../lib/mostrar';
@@ -29,6 +29,7 @@ function Detalle({ registro, def }: { registro: Registro; def: DefinicionFormato
   const productos = useProductos();
   const operarios = useOperarios();
   const historial = useHistorial(registro.id);
+  const cierre = useCierre(registro.fecha);
   const eliminar = useEliminarRegistro();
   const avisar = useAvisar();
   const navegar = useNavigate();
@@ -52,7 +53,8 @@ function Detalle({ registro, def }: { registro: Registro; def: DefinicionFormato
           <ArrowLeft size={18} aria-hidden /> Historial
         </Link>
         <div className="ml-auto flex flex-wrap gap-2">
-          {puedeEditar(registro, usuario) && (
+          {cierre.data && <span className="h-12 px-4 rounded-campo bg-tinta text-white font-bold flex items-center">Día cerrado</span>}
+          {puedeEditar(registro, usuario, !!cierre.data) && (
             <Link to={`/registro/${registro.id}/editar`}><Boton variante="vino" icono={Pencil}>Editar</Boton></Link>
           )}
           <Boton icono={Printer} onClick={() => window.print()}>Imprimir</Boton>

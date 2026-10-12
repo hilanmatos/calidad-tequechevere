@@ -103,7 +103,29 @@ export function Historial() {
       ) : (
         <Panel className="overflow-hidden">
           <p className="px-5 pt-4 text-sm text-tinta-suave">{filas.length} {filas.length === 1 ? 'registro' : 'registros'}</p>
-          <div className="overflow-x-auto">
+          <ul className="lg:hidden divide-y divide-linea px-2 pb-2">
+            {filas.slice(0, 300).map((r) => {
+              const def = formato(r.formato);
+              const prod = productos.data?.find((p) => p.id === r.productoId);
+              const n = r.desviaciones.filter((d) => d.severidad !== 'por-confirmar').length;
+              return (
+                <li key={r.id}>
+                  <Link to={`/registro/${r.id}`} className="flex items-center gap-3 rounded-xl px-3 py-3 min-h-16 active:bg-escarcha">
+                    <span className="w-20 shrink-0">
+                      <span className="block font-bold">{fechaCorta(r.fecha, false)}</span>
+                      {r.hora && <span className="block text-sm text-tinta-suave">{horaLegible(r.hora)}</span>}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-bold truncate">{def?.nombreCorto ?? r.formato}</span>
+                      <span className="block text-sm text-tinta-suave truncate">{[prod?.nombre ?? r.area, r.lote && `lote ${r.lote}`].filter(Boolean).join(', ') || r.realizadoPor}</span>
+                    </span>
+                    <ChipEstadoRegistro desviaciones={n} pcc={r.tieneDesviacionPcc} />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="hidden lg:block overflow-x-auto">
             <table className="w-full text-left">
               <thead className="text-sm text-tinta-suave">
                 <tr className="border-b border-linea">

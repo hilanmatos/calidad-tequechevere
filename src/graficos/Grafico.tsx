@@ -1,15 +1,5 @@
-import { BarChart, HeatmapChart, LineChart, ScatterChart } from 'echarts/charts';
-import {
-  GridComponent, LegendComponent, MarkAreaComponent, MarkLineComponent, TooltipComponent, VisualMapComponent,
-} from 'echarts/components';
-import * as echarts from 'echarts/core';
-import { SVGRenderer } from 'echarts/renderers';
 import { useEffect, useRef } from 'react';
-
-echarts.use([
-  BarChart, LineChart, ScatterChart, HeatmapChart, GridComponent, TooltipComponent, LegendComponent,
-  MarkAreaComponent, MarkLineComponent, VisualMapComponent, SVGRenderer,
-]);
+import { echarts } from './motor-echarts';
 
 export type Opcion = echarts.EChartsCoreOption & { tooltip?: Record<string, unknown> };
 

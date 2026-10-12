@@ -143,3 +143,13 @@ revisión manual. Los registros importados quedan con `origen = importado`.
   vencimiento, normalizadores del importador.
 - Verificación manual en navegador a tamaño tablet (1280×800 y 800×1280) antes de cada entrega.
 - Prueba de RLS: un capturista no puede editar registros de días anteriores ni catálogos.
+
+## 10. Ajustes tras la primera revisión (12/10/2026)
+
+- Áreas monitoreadas: **Planta Alta** (tequeños, mini empanadas, discos y pastelitos) y **Gluten Free**. Tienda sale del monitoreo.
+- Unicidad: cuartos fríos uno por día; higiene y lavado uno por día y área; formatos de línea uno por lote. Columna `clave_unica` con índice único.
+- Cierre del día (`cierres_dia`): bloquea crear y editar registros de esa fecha (RLS); solo el administrador reabre.
+- "No asistió" por persona en higiene y lavado: la fila se guarda como `{ _ausente: 'si' }` y no cuenta.
+- Temperatura del queso opcional en L1 Tequeños y en F-Q-32.
+- Enviar informe: PDF (jsPDF) o Excel, compartido con Web Share API o descargado.
+- Uso táctil: sin zoom por doble toque, protección contra toques repetidos, campos de 16 px o más, grilla de personal en tarjetas, auditoría automática en 600, 768, 800, 1024 y 1180 px de ancho.

@@ -97,6 +97,7 @@ export interface Repositorio {
 
   registros(f: FiltroRegistros): Promise<Registro[]>;
   registro(id: string): Promise<Registro | null>;
+  porClave(clave: string): Promise<Registro | null>;
   guardarRegistro(r: NuevoRegistro): Promise<Registro>;
   eliminarRegistro(id: string): Promise<void>;
   historial(id: string): Promise<CambioRegistro[]>;

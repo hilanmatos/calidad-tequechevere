@@ -81,7 +81,7 @@ function valorDemo(campo: Campo, ctx: Contexto, r: () => number): unknown {
         const fila: Record<string, string> = {};
         for (const c of campo.columnas) {
           if (c.aplica && !c.aplica(ctx)) continue;
-          fila[c.id] = r() < (campo.id === 'lavado' ? 0.07 : 0.004) ? malo : bueno;
+          fila[c.id] = r() < (campo.id === 'lavado' ? 0.03 : 0.004) ? malo : bueno;
         }
         valor[o.id] = fila;
       }

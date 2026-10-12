@@ -7,8 +7,13 @@ con tablero de indicadores, historial y exportación a Excel.
 
 ## Cómo se usa
 
-- **Hoy**: la rutina diaria (cuartos fríos, higiene, lavado de manos) y una tarjeta por formato.
-  Tocar una tarjeta abre el formato paso a paso.
+- **Hoy**: la rutina diaria (cuartos fríos una vez al día; higiene y lavado de manos por área: Planta Alta y
+  Gluten Free) y una tarjeta por formato. Lo que ya se hizo queda en verde y no se puede repetir: un registro por
+  día, por día y área, o por lote, según el formato. **Cerrar el día** deja los registros como definitivos;
+  solo un administrador puede reabrirlo.
+- **No asistió**: en higiene y lavado, la persona que faltó sale del monitoreo de ese día y no cuenta como falla.
+- **Enviar informe** (en Hoy y en el Tablero): PDF con gráficos, desviaciones y acciones correctivas, o Excel con
+  todos los datos. En la tablet abre el menú para enviarlo por WhatsApp, correo o Drive.
 - **Historial**: todos los registros con filtros y exportación a Excel.
 - **Tablero**: indicadores del período, desviaciones más frecuentes, tendencias con su banda de límite.
 - **Admin** (solo administradores): productos con pesos y vida útil, operarios por área, usuarios.

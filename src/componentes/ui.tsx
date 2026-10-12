@@ -1,8 +1,9 @@
 import {
   CircleAlert, CircleCheck, CircleHelp, LoaderCircle, Scale, Shirt, Droplets, ThermometerSnowflake,
-  CookingPot, type LucideIcon,
+  CookingPot, X, type LucideIcon,
 } from 'lucide-react';
-import { createContext, useCallback, useContext, useRef, useState, type ButtonHTMLAttributes, type ReactNode, type SVGProps } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode, type SVGProps } from 'react';
+import { createPortal } from 'react-dom';
 import type { Estado, Severidad } from '../motor/tipos';
 
 export function cx(...c: (string | false | null | undefined)[]) {
@@ -216,5 +217,45 @@ export function Encabezado({ titulo, subtitulo, accion, volver }: { titulo: Reac
       </div>
       {accion && <div className="flex gap-2 flex-wrap">{accion}</div>}
     </header>
+  );
+}
+
+// ───────────── Diálogo ─────────────
+export function Dialogo({ abierto, cerrar, titulo, children, pie }: {
+  abierto: boolean; cerrar: () => void; titulo: string; children: ReactNode; pie?: ReactNode;
+}) {
+  const panel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!abierto) return;
+    const previo = document.activeElement as HTMLElement | null;
+    panel.current?.focus();
+    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape') cerrar(); };
+    document.addEventListener('keydown', tecla);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', tecla);
+      document.body.style.overflow = '';
+      previo?.focus();
+    };
+  }, [abierto, cerrar]);
+  if (!abierto) return null;
+  return createPortal(
+    <div className="no-imprimir fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-tinta/50 p-0 sm:p-6 text-tinta" onClick={cerrar}>
+      <div
+        ref={panel} role="dialog" aria-modal="true" aria-label={titulo} tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full sm:max-w-xl max-h-[92dvh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl outline-none flex flex-col"
+      >
+        <header className="flex items-center gap-3 px-6 pt-5 pb-3">
+          <h2 className="text-2xl font-extrabold flex-1">{titulo}</h2>
+          <button type="button" onClick={cerrar} aria-label="Cerrar" className="size-12 rounded-full grid place-items-center text-tinta-suave hover:bg-escarcha-2">
+            <X size={22} />
+          </button>
+        </header>
+        <div className="px-6 pb-4 flex flex-col gap-4">{children}</div>
+        {pie && <footer className="sticky bottom-0 bg-white border-t border-linea px-6 py-4 flex flex-wrap justify-end gap-2 pb-[max(1rem,env(safe-area-inset-bottom))]">{pie}</footer>}
+      </div>
+    </div>,
+    document.body,
   );
 }

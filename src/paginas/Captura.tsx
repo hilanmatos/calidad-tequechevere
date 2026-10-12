@@ -1,15 +1,16 @@
-import { ArrowLeft, Check, ChevronLeft, ChevronRight, CircleAlert, Save } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, CircleCheck, Eye, Lock, Pencil, Save } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useSesion } from '../auth/Sesion';
 import { Campo } from '../componentes/campos/Campo';
 import { TarjetaCampo } from '../componentes/campos/TarjetaCampo';
 import { Boton, Cargando, cx, IconoFormato, SEVERIDAD, useAvisar, Vacio } from '../componentes/ui';
 import { formato } from '../formatos';
-import { useGuardarRegistro, useOperarios, useProductos, useRegistro, useRegistros } from '../datos/hooks';
-import type { Registro, Usuario } from '../datos/repositorio';
+import { useCierre, useGuardarRegistro, useOperarios, useProductos, useReabrirDia, useRegistro, useRegistroPorClave, useRegistros } from '../datos/hooks';
+import type { CierreDia, Registro, Usuario } from '../datos/repositorio';
+import { DESCRIPCION_AREA } from '../formatos/comunes';
 import { fechaLarga, hoyPanama, horaLegible, horaPanama } from '../lib/fechas';
-import { camposVisibles, desviaciones, etapasVisibles, faltantes, hayPcc } from '../motor/evaluar';
+import { camposVisibles, claveUnica, desviaciones, etapasVisibles, faltantes, hayPcc } from '../motor/evaluar';
 import { materializar, rutasFotos, valoresEfectivos } from '../motor/materializar';
 import type { Contexto, DefinicionFormato, Desviacion, Valores } from '../motor/tipos';
 
@@ -33,7 +34,9 @@ interface Borrador {
 const PASO_DATOS = '__datos';
 const PASO_RESUMEN = '__resumen';
 
-export function puedeEditar(r: Registro, u: Usuario): boolean {
+/** Con el día abierto: el creador edita su registro el mismo día y el administrador, cualquiera. */
+export function puedeEditar(r: Registro, u: Usuario, diaCerrado = false): boolean {
+  if (diaCerrado) return false;
   if (u.rol === 'admin') return true;
   return r.creadoPor === u.id && hoyPanama(new Date(r.creadoEn)) === hoyPanama();
 }
@@ -51,14 +54,17 @@ export function Captura() {
   const { codigo, id } = useParams();
   const { usuario } = useSesion();
   const consulta = useRegistro(id);
-  if (id && consulta.isLoading) return <Cargando />;
   const registro = consulta.data ?? undefined;
+  const cierreRegistro = useCierre(registro?.fecha ?? '');
+  if (id && (consulta.isLoading || cierreRegistro.isLoading)) return <Cargando />;
   const def = formato(id ? registro?.formato ?? '' : codigo ?? '');
   if (!def) return <Vacio titulo="No encontramos ese formato" accion={<Link className="font-bold text-vino underline" to="/">Volver a Hoy</Link>} />;
-  if (registro && !puedeEditar(registro, usuario)) {
+  if (registro && !puedeEditar(registro, usuario, !!cierreRegistro.data)) {
     return (
       <Vacio titulo="Este registro ya no se puede editar" accion={<Link className="font-bold text-vino underline" to={`/registro/${registro.id}`}>Ver el registro</Link>}>
-        Solo se pueden editar los registros propios el mismo día. Para corregir uno anterior, pide el cambio al administrador.
+        {cierreRegistro.data
+          ? 'El día de este registro ya se cerró. Para corregirlo, un administrador debe reabrir el día.'
+          : 'Solo se pueden editar los registros propios el mismo día. Para corregir uno anterior, pide el cambio al administrador.'}
       </Vacio>
     );
   }
@@ -72,7 +78,7 @@ function Asistente({ def, registro }: { def: DefinicionFormato; registro?: Regis
   const guardar = useGuardarRegistro();
   const avisar = useAvisar();
   const navegar = useNavigate();
-  const clave = `borrador:${def.codigo}`;
+  const claveBorrador = `borrador:${def.codigo}`;
 
   const [enc, setEnc] = useState<Encabezado>(() => registro
     ? { fecha: registro.fecha, hora: registro.hora, area: registro.area, productoId: registro.productoId, lote: registro.lote }
@@ -82,13 +88,22 @@ function Asistente({ def, registro }: { def: DefinicionFormato; registro?: Regis
   const [obs, setObs] = useState(registro?.observaciones ?? '');
   const [paso, setPaso] = useState(0);
   const [tocado, setTocado] = useState(false);
-  const [borrador, setBorrador] = useState<Borrador | null>(() => (registro ? null : leerBorrador(clave)));
+  const [borrador, setBorrador] = useState<Borrador | null>(() => (registro ? null : leerBorrador(claveBorrador)));
 
   const producto = productos.data?.find((p) => p.id === enc.productoId);
   const ctx: Contexto = useMemo(() => {
     const base: Contexto = { valores, producto, productos: productos.data, operarios: operarios.data, fecha: enc.fecha, area: enc.area };
     return { ...base, valores: valoresEfectivos(def, base) };
   }, [valores, producto, productos.data, operarios.data, enc.fecha, enc.area, def]);
+
+  const cierre = useCierre(enc.fecha);
+  const diaCerrado = cierre.data ?? null;
+  const clave = claveUnica(def, enc);
+  const porClave = useRegistroPorClave(clave);
+  const existente = porClave.data && porClave.data.id !== registro?.id ? porClave.data : null;
+  const bloqueado = !!diaCerrado || !!existente;
+  const navPasos = useRef<HTMLElement>(null);
+  const chips = useRef<(HTMLButtonElement | null)[]>([]);
 
   const etapas = etapasVisibles(def, ctx);
   const pasos = [{ id: PASO_DATOS, titulo: 'Datos' }, ...etapas, { id: PASO_RESUMEN, titulo: 'Resumen' }];
@@ -108,12 +123,23 @@ function Asistente({ def, registro }: { def: DefinicionFormato; registro?: Regis
   useEffect(() => {
     if (registro || !tocado) return;
     const t = setTimeout(() => {
-      try { localStorage.setItem(clave, JSON.stringify({ enc, valores, accion, obs, paso, en: Date.now() } satisfies Borrador)); } catch { /* sin almacenamiento */ }
+      try { localStorage.setItem(claveBorrador, JSON.stringify({ enc, valores, accion, obs, paso, en: Date.now() } satisfies Borrador)); } catch { /* sin almacenamiento */ }
     }, 400);
     return () => clearTimeout(t);
-  }, [enc, valores, accion, obs, paso, tocado, registro, clave]);
+  }, [enc, valores, accion, obs, paso, tocado, registro, claveBorrador]);
 
-  useEffect(() => { window.scrollTo({ top: 0 }); }, [paso]);
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+    // mantiene el paso actual a la vista en la fila de pasos
+    const nav = navPasos.current;
+    const chip = chips.current[paso];
+    if (nav && chip) {
+      const n = nav.getBoundingClientRect();
+      const c = chip.getBoundingClientRect();
+      nav.scrollTo({ left: nav.scrollLeft + (c.left - n.left) - (n.width - c.width) / 2, behavior: 'smooth' });
+    }
+  }, [paso]);
+  useEffect(() => { if (bloqueado) setPaso(0); }, [bloqueado]);
 
   const cambiar = (id: string, v: unknown) => {
     setTocado(true);
@@ -131,7 +157,7 @@ function Asistente({ def, registro }: { def: DefinicionFormato; registro?: Regis
     setBorrador(null); setTocado(true);
   };
   const descartar = () => {
-    try { localStorage.removeItem(clave); } catch { /* sin almacenamiento */ }
+    try { localStorage.removeItem(claveBorrador); } catch { /* sin almacenamiento */ }
     setBorrador(null);
   };
 
@@ -161,8 +187,9 @@ function Asistente({ def, registro }: { def: DefinicionFormato; registro?: Regis
         fotos: rutasFotos(def, datos),
         origen: registro?.origen ?? 'app',
         realizadoPor: registro?.realizadoPor || usuario.nombre,
+        claveUnica: clave ?? undefined,
       });
-      try { localStorage.removeItem(clave); } catch { /* sin almacenamiento */ }
+      try { localStorage.removeItem(claveBorrador); } catch { /* sin almacenamiento */ }
       avisar(registro ? 'Cambios guardados' : 'Registro guardado');
       navegar(registro ? `/registro/${r.id}` : '/');
     } catch (e) {
@@ -195,7 +222,10 @@ function Asistente({ def, registro }: { def: DefinicionFormato; registro?: Regis
         </div>
       </header>
 
-      {borrador && (
+      {diaCerrado && <AvisoDiaCerrado cierre={diaCerrado} esAdmin={usuario.rol === 'admin'} />}
+      {!diaCerrado && existente && <AvisoYaHecho def={def} r={existente} usuario={usuario} />}
+
+      {borrador && !bloqueado && (
         <div className="rounded-panel bg-dorado-claro border border-dorado/60 px-5 py-4 flex flex-wrap items-center gap-3">
           <p className="flex-1 min-w-60">
             <strong>Tienes un registro sin terminar</strong> de {fechaLarga(borrador.enc.fecha)}, {horaLegible(new Date(borrador.en).toTimeString().slice(0, 5))}.
@@ -206,7 +236,7 @@ function Asistente({ def, registro }: { def: DefinicionFormato; registro?: Regis
       )}
 
       {/* Pasos: es una secuencia real, por eso van numerados */}
-      <nav aria-label="Etapas del formato" className="no-imprimir -mx-4 px-4 overflow-x-auto">
+      <nav ref={navPasos} aria-label="Etapas del formato" className="no-imprimir -mx-4 px-4 overflow-x-auto [scrollbar-width:none]">
         <ol className="flex gap-2 min-w-max">
           {pasos.map((p, i) => {
             const pend = pendientesDe(p.id);
@@ -215,8 +245,10 @@ function Asistente({ def, registro }: { def: DefinicionFormato; registro?: Regis
             return (
               <li key={p.id}>
                 <button
+                  ref={(el) => { chips.current[i] = el; }}
                   type="button" onClick={() => setPaso(i)} aria-current={activo ? 'step' : undefined}
-                  className={cx('h-12 rounded-full pl-1.5 pr-4 flex items-center gap-2 font-bold border-2 transition-colors',
+                  disabled={bloqueado && i > 0}
+                  className={cx('h-12 rounded-full pl-1.5 pr-4 flex items-center gap-2 font-bold border-2 transition-colors disabled:opacity-40',
                     activo ? 'bg-vino border-vino text-white' : 'bg-white border-linea text-tinta hover:border-vino/40')}
                 >
                   <span className={cx('size-8 rounded-full grid place-items-center text-sm',
@@ -234,7 +266,7 @@ function Asistente({ def, registro }: { def: DefinicionFormato; registro?: Regis
       <div className="grid xl:grid-cols-[1fr_20rem] gap-6 items-start">
         <div className="flex flex-col gap-4 min-w-0">
           {actual.id === PASO_DATOS && (
-            <PasoDatos def={def} enc={enc} cambiar={cambiarEnc} productos={(productos.data ?? []).filter((p) => p.activo && p.linea === def.codigo)} registroId={registro?.id} />
+            <PasoDatos def={def} enc={enc} cambiar={cambiarEnc} productos={(productos.data ?? []).filter((p) => p.activo && p.linea === def.codigo)} registroId={registro?.id} loteRepetido={!!existente && def.unicidad === 'lote'} />
           )}
           {actual.id === PASO_RESUMEN && (
             <PasoResumen
@@ -278,11 +310,11 @@ function Asistente({ def, registro }: { def: DefinicionFormato; registro?: Regis
             </span>
           </div>
           {actual.id === PASO_RESUMEN ? (
-            <Boton tam="lg" variante="primario" icono={Save} onClick={enviar} cargando={guardar.isPending} disabled={!listo}>
+            <Boton tam="lg" variante="primario" icono={Save} onClick={enviar} cargando={guardar.isPending} disabled={!listo || bloqueado}>
               {registro ? 'Guardar cambios' : 'Guardar registro'}
             </Boton>
           ) : (
-            <Boton tam="lg" variante="vino" onClick={() => setPaso((p) => Math.min(pasos.length - 1, p + 1))}>
+            <Boton tam="lg" variante="vino" onClick={() => setPaso((p) => Math.min(pasos.length - 1, p + 1))} disabled={bloqueado}>
               {paso === pasos.length - 2 ? 'Revisar' : 'Siguiente'} <ChevronRight size={22} aria-hidden />
             </Boton>
           )}
@@ -335,14 +367,12 @@ function Opciones<T extends string>({ opciones, valor, cambiar, etiqueta }: { op
   );
 }
 
-function PasoDatos({ def, enc, cambiar, productos, registroId }: {
+function PasoDatos({ def, enc, cambiar, productos, registroId, loteRepetido }: {
   def: DefinicionFormato; enc: Encabezado; cambiar: (c: Partial<Encabezado>) => void;
-  productos: { id: string; codigo: string; nombre: string; presentacion: string }[]; registroId?: string;
+  productos: { id: string; codigo: string; nombre: string; presentacion: string }[]; registroId?: string; loteRepetido: boolean;
 }) {
   const delDia = useRegistros({ desde: enc.fecha, hasta: enc.fecha, formato: def.codigo });
-  const existente = def.areas && enc.area
-    ? delDia.data?.find((r) => r.area === enc.area && r.id !== registroId)
-    : undefined;
+  const hechas = new Set((delDia.data ?? []).filter((r) => r.id !== registroId && r.area).map((r) => r.area!));
   const entrada = 'h-14 w-full rounded-xl border border-linea bg-white px-4 text-lg outline-none focus:border-vino';
 
   return (
@@ -357,14 +387,25 @@ function PasoDatos({ def, enc, cambiar, productos, registroId }: {
       )}
       {def.areas && (
         <TarjetaCampo id="area" etiqueta="Área" estado={enc.area ? 'ok' : 'vacio'} ancho>
-          <Opciones etiqueta="Área" opciones={def.areas.map((a) => ({ id: a, texto: a }))} valor={enc.area} cambiar={(a) => cambiar({ area: a })} />
-          {existente && (
-            <p className="rounded-xl bg-dorado-claro px-4 py-3 flex flex-wrap items-center gap-2">
-              <CircleAlert size={18} className="text-vino" aria-hidden />
-              Ya hay un registro de {enc.area} para este día.
-              <Link to={`/registro/${existente.id}/editar`} className="font-bold text-vino underline underline-offset-2">Continuar ese registro</Link>
-            </p>
-          )}
+          <Opciones
+            etiqueta="Área"
+            valor={enc.area}
+            cambiar={(a) => cambiar({ area: a })}
+            opciones={def.areas.map((a) => ({
+              id: a,
+              texto: (
+                <span className="flex flex-col items-start text-left py-1">
+                  <span className="flex items-center gap-2">
+                    {a}
+                    {def.unicidad === 'dia-area' && hechas.has(a) && (
+                      <span className="rounded-full bg-ok px-2 py-0.5 text-xs text-white flex items-center gap-1"><Check size={12} strokeWidth={3} /> Hecho</span>
+                    )}
+                  </span>
+                  {DESCRIPCION_AREA[a] && <span className="text-sm font-normal opacity-80">{DESCRIPCION_AREA[a]}</span>}
+                </span>
+              ),
+            }))}
+          />
         </TarjetaCampo>
       )}
       {def.usaProducto && (
@@ -392,7 +433,8 @@ function PasoDatos({ def, enc, cambiar, productos, registroId }: {
       )}
       {def.usaLote && (
         <TarjetaCampo id="lote" etiqueta="Lote (número de orden de producción)" estado={enc.lote ? 'ok' : 'vacio'}>
-          <input aria-label="Lote" inputMode="numeric" className={cx(entrada, 'cifra text-2xl')} value={enc.lote ?? ''} onChange={(e) => cambiar({ lote: e.target.value })} />
+          <input aria-label="Lote" inputMode="numeric" enterKeyHint="done" className={cx(entrada, 'cifra text-2xl', loteRepetido && 'border-fuera')} value={enc.lote ?? ''} onChange={(e) => cambiar({ lote: e.target.value })} />
+          {loteRepetido && <p className="text-fuera font-bold">Este lote ya tiene su registro. Revisa el número o abre el registro existente arriba.</p>}
         </TarjetaCampo>
       )}
     </div>
@@ -467,5 +509,62 @@ function PasoResumen({ faltaEnc, falt, desv, accion, obs, usuario, setAccion, se
       </label>
       <p className="text-tinta-suave">Realizado por <strong className="text-tinta">{usuario}</strong></p>
     </div>
+  );
+}
+
+function AvisoDiaCerrado({ cierre, esAdmin }: { cierre: CierreDia; esAdmin: boolean }) {
+  const reabrir = useReabrirDia();
+  const avisar = useAvisar();
+  return (
+    <section className="rounded-panel border-2 border-tinta bg-white px-5 py-4 flex flex-wrap items-center gap-4">
+      <span className="size-12 rounded-full bg-tinta text-white grid place-items-center shrink-0"><Lock size={22} aria-hidden /></span>
+      <div className="flex-1 min-w-60">
+        <p className="text-lg font-bold first-letter:uppercase">El {fechaLarga(cierre.fecha)} ya está cerrado</p>
+        <p className="text-tinta-suave">
+          Lo cerró {cierre.cerradoPorNombre} a las {horaLegible(horaPanama(new Date(cierre.cerradoEn)))}{' '}
+          {esAdmin ? 'Para registrar o corregir algo de ese día, primero reábrelo.' : 'Para agregar o corregir registros de ese día, un administrador debe reabrirlo.'}
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Link to="/" className="h-12 px-5 rounded-campo border border-linea bg-white font-bold grid place-items-center">Volver a Hoy</Link>
+        {esAdmin && (
+          <Boton
+            variante="vino"
+            cargando={reabrir.isPending}
+            onClick={async () => { await reabrir.mutateAsync(cierre.fecha); avisar('Día reabierto'); }}
+          >
+            Reabrir el día
+          </Boton>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function AvisoYaHecho({ def, r, usuario }: { def: DefinicionFormato; r: Registro; usuario: Usuario }) {
+  const titulo = def.unicidad === 'lote'
+    ? `El lote ${r.lote} ya tiene su registro de ${def.nombreCorto}`
+    : def.unicidad === 'dia-area'
+      ? `${r.area} ya tiene su registro de ${def.nombreCorto.toLowerCase()} este día`
+      : `${def.nombreCorto} ya se registró este día`;
+  const n = r.desviaciones.filter((d) => d.severidad !== 'por-confirmar').length;
+  const editable = puedeEditar(r, usuario);
+  return (
+    <section className="rounded-panel border-2 border-ok bg-ok-claro/50 px-5 py-4 flex flex-wrap items-center gap-4">
+      <span className="size-12 rounded-full bg-ok text-white grid place-items-center shrink-0"><CircleCheck size={24} aria-hidden /></span>
+      <div className="flex-1 min-w-60">
+        <p className="text-lg font-bold">{titulo}</p>
+        <p className="text-tinta-suave">
+          Lo hizo {r.realizadoPor || 'el equipo de Calidad'} a las {horaLegible(r.hora ?? horaPanama(new Date(r.creadoEn)))}{' '}
+          {n === 0 ? 'Sin desviaciones.' : `${n} ${n === 1 ? 'desviación' : 'desviaciones'}.`} Para no duplicarlo, ábrelo en lugar de llenar uno nuevo.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Link to={`/registro/${r.id}`} className="h-12 px-5 rounded-campo border border-linea bg-white font-bold flex items-center gap-2"><Eye size={18} aria-hidden /> Ver</Link>
+        {editable && (
+          <Link to={`/registro/${r.id}/editar`} className="h-12 px-5 rounded-campo bg-vino text-white font-bold flex items-center gap-2"><Pencil size={18} aria-hidden /> Continuar ese registro</Link>
+        )}
+      </div>
+    </section>
   );
 }
