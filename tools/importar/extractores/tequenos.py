@@ -186,7 +186,10 @@ def producto(nombre, codigo, presentacion_, freido: bool):
         return None, f'el código del lote ({codigo}) es de otro producto'
     if fam == 'full':
         precocido = re.search(r'pr[\w-]*cocid', sin_acentos(nombre).lower())
-        return (FULL_PRECOCIDO if precocido or freido else FULL_CRUDO), None
+        # Operaciones (12/10/2026): las presentaciones de 20 y 24 unidades son precocidas
+        m = re.match(r'\d+', presentacion_ or '')
+        de_precocido = m is not None and int(m.group()) in (20, 24)
+        return (FULL_PRECOCIDO if precocido or freido or de_precocido else FULL_CRUDO), None
     if fam == 'salmon':
         m = re.match(r'\d+', presentacion_ or '')
         clave = SALMON.get(int(m.group())) if m else None

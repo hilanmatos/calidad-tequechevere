@@ -119,6 +119,13 @@ async function main() {
   const existentes = new Set(
     (await todas(`registros?select=clave_unica&clave_unica=not.is.null${reemplazar ? '&origen=eq.app' : ''}`)).map((r) => r.clave_unica as string),
   );
+  // Lo ya importado se reconoce por su fuente (archivo › hoja › fila): cubre también los registros sin clave
+  // única (sin lote), que de otro modo se duplicarían al volver a correr.
+  const yaImportadas = new Set(
+    (await todas('registros?select=observaciones&origen=eq.importado'))
+      .map((r) => /Importado de: (.+)$/.exec(String(r.observaciones ?? ''))?.[1])
+      .filter(Boolean) as string[],
+  );
 
   const filas: { fila: Fila; inf: Fila }[] = [];
   const informe: Fila[] = [];
@@ -162,6 +169,7 @@ async function main() {
     const cu = claveUnica(def, { fecha: e.fecha, area: e.area ?? undefined, lote: e.lote ?? undefined });
 
     const r = { ...base, desviaciones: desv.length, pcc: hayPcc(desv) ? 'sí' : '', detalle: desv.map((d) => `${d.etiqueta}: ${d.valor}`).join(' | ') };
+    if (yaImportadas.has(e.fuente)) { informe.push({ ...r, resultado: 'ya importado' }); continue; }
     if (cu && existentes.has(cu)) { informe.push({ ...r, resultado: 'ya existe en la app' }); continue; }
     if (cu && vistas.has(cu)) { informe.push({ ...r, resultado: 'repetido en el Excel (se conserva el primero)' }); continue; }
     if (cu) vistas.add(cu);

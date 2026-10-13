@@ -149,6 +149,13 @@ def test_producto_precocido_por_nombre_aunque_no_haya_freido():
         'Tequeño Full Queso precocido'
 
 
+def test_producto_full_de_20_y_24_es_precocido_aunque_no_haya_freido():
+    # Operaciones (12/10/2026): las presentaciones de 20 y 24 unidades son precocidas
+    assert producto('FULL QUESO', 'PT026', '24 unidades', freido=False)[0] == 'Tequeño Full Queso precocido'
+    assert producto('FULL QUESO', 'PT013', '20 unidades', freido=False)[0] == 'Tequeño Full Queso precocido'
+    assert producto('FULL QUESO', 'PT011', '12 unidades', freido=False)[0] == 'Tequeño Full Queso'
+
+
 def test_producto_otros_de_la_linea():
     assert producto('BOQUITAS', 'PT006', '60 unidades', freido=False) == ('Tequeño Boquita', None)
     assert producto('Tequeñón', 'PT015', '50 unidades', freido=True) == ('Tequeñón', None)

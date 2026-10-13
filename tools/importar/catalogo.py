@@ -3,8 +3,8 @@
 Para el campo `producto` de un registro: usar el código si tiene; si no, el nombre exacto."""
 
 PRODUCTOS = [
-    ('cq-l1-tequenos', '', 'Tequeño Full Queso', 'Full 12, 20, 24 y 50'),
-    ('cq-l1-tequenos', '', 'Tequeño Full Queso precocido', 'Precocido'),
+    ('cq-l1-tequenos', '', 'Tequeño Full Queso', 'Full 12 y 50'),
+    ('cq-l1-tequenos', '', 'Tequeño Full Queso precocido', 'Full 20 y 24'),
     ('cq-l1-tequenos', '', 'Tequeño Chela', 'Chela 50'),
     ('cq-l1-tequenos', '', 'Tequeño Full de Guayaba (5 cm)', 'Bolsa de 10 y Guayaba 40'),
     ('cq-l1-tequenos', '', 'Tequeño de Chocolate', 'Bolsa de 10 y Chocolate 50'),
