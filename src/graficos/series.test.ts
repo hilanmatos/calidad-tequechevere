@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Registro } from '../datos/repositorio';
 import type { Desviacion } from '../motor/tipos';
-import { cuartosResumen, higienePorCriterio, indicadores, lavadoMapa, pareto, porDia, serieCampo } from './series';
+import { celdaMapaLavado, cuartosResumen, DIM_OMISION, higienePorCriterio, indicadores, lavadoMapa, pareto, porDia, serieCampo } from './series';
 
 let n = 0;
 const reg = (p: Partial<Registro>): Registro => ({
@@ -89,5 +89,12 @@ describe('higiene y lavado', () => {
       datos: { lavado: { o1: { h0630: 'lavo', h0930: 'no', h1230: 'pendiente' }, o2: { _ausente: 'si' } } },
     })]);
     expect(m).toEqual([{ operarioId: 'o1', fecha: '2026-10-10', lavo: 1, total: 2 }]);
+  });
+
+  it('la celda del mapa de lavado lleva la proporción de omisiones en la dimensión que colorea', () => {
+    // ECharts colorea con la última dimensión si no se le indica otra: el total (3 o 4) pintaba todo de rojo
+    const celda = celdaMapaLavado({ operarioId: 'o1', fecha: '2026-10-10', lavo: 3, total: 4 }, ['2026-10-09', '2026-10-10'], ['o0', 'o1']);
+    expect(celda.slice(0, 2)).toEqual([1, 1]);
+    expect(celda[DIM_OMISION]).toBe(0.25);
   });
 });

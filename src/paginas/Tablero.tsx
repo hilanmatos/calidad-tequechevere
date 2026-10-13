@@ -9,7 +9,7 @@ import { useOperarios, useProductos, useRegistros } from '../datos/hooks';
 import type { Registro } from '../datos/repositorio';
 import { COLOR, ejeX, ejeY, Grafico, type Opcion } from '../graficos/Grafico';
 import {
-  camposNumericos, cuartosResumen, higienePorCriterio, higienePorOperario, indicadores, lavadoMapa, limiteFijo,
+  camposNumericos, celdaMapaLavado, cuartosResumen, DIM_OMISION, higienePorCriterio, higienePorOperario, indicadores, lavadoMapa, limiteFijo,
   pareto, pesoPorToma, porDia, serieCampo, serieCuarto,
 } from '../graficos/series';
 import { fechaCorta, horaLegible, hoyPanama } from '../lib/fechas';
@@ -515,12 +515,12 @@ function Lavado({ rs, nombres }: { rs: Registro[]; nombres: Map<string, string> 
     xAxis: ejeX({ type: 'category', data: fechas.map((f) => fechaCorta(f, false)) }),
     yAxis: ejeX({ type: 'category', axisLine: { show: false }, data: ops.map((o) => nombres.get(o) ?? 'Operario') }),
     visualMap: {
-      min: 0, max: 0.5, calculable: false, orient: 'horizontal', left: 'center', bottom: 0, itemWidth: 12, itemHeight: 160,
+      dimension: DIM_OMISION, min: 0, max: 0.5, calculable: false, orient: 'horizontal', left: 'center', bottom: 0, itemWidth: 12, itemHeight: 160,
       inRange: { color: COLOR.secuencialFalla }, text: ['50 % o más', 'Sin omisiones'], textStyle: { color: COLOR.suave },
     },
     series: [{
       type: 'heatmap',
-      data: celdas.filter((c) => fechas.includes(c.fecha)).map((c) => [fechas.indexOf(c.fecha), ops.indexOf(c.operarioId), (c.total - c.lavo) / c.total, c.lavo, c.total]),
+      data: celdas.filter((c) => fechas.includes(c.fecha)).map((c) => celdaMapaLavado(c, fechas, ops)),
       itemStyle: { borderColor: '#fff', borderWidth: 2, borderRadius: 4 },
       emphasis: { itemStyle: { borderColor: COLOR.tinta, borderWidth: 2 } },
     }],

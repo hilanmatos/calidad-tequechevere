@@ -171,6 +171,14 @@ export function higienePorOperario(rs: Registro[]) {
   return [...mapa.values()].sort((a, b) => b.fallas - a.fallas);
 }
 
+/** Posición de la proporción de omisiones en cada celda del mapa: el visualMap debe colorear con esta dimensión. */
+export const DIM_OMISION = 2;
+
+/** Celda del mapa de calor: [día, operario, proporción de omisiones, lavados, total]. */
+export function celdaMapaLavado(c: { operarioId: string; fecha: string; lavo: number; total: number }, fechas: string[], ops: string[]) {
+  return [fechas.indexOf(c.fecha), ops.indexOf(c.operarioId), (c.total - c.lavo) / c.total, c.lavo, c.total];
+}
+
 export function lavadoMapa(rs: Registro[]) {
   const campo = checklistDe('lavado-manos');
   const res: { operarioId: string; fecha: string; lavo: number; total: number }[] = [];
