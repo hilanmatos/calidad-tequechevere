@@ -107,6 +107,13 @@ describe('cq-l1-tequenos', () => {
     expect(etapas(boquita, { tInicialCong: 6 })).toContain('congelacion');
     expect(faltantes(def, { valores: {}, producto: boquita, fecha: '2026-10-12' }).map((x) => x.campoId)).not.toContain('tInicialCong');
   });
+
+  it('un registro viejo de boquita muestra lo que ya tenía, sin pedir los campos nuevos de congelación', () => {
+    const boquita: Producto = { ...tequeno(false), nombre: 'Tequeño Boquita', llevaCongelacion: false };
+    const ctx: Contexto = { valores: { tInicialCong: 6 }, producto: boquita, fecha: '2026-10-16' };
+    const pide = [...faltantes(def, ctx), ...pendientesDiferidos(def, ctx)].map((x) => x.campoId);
+    for (const nuevo of ['horaPrimeraBandeja', 'tUltimaBandeja', 'horaUltimaBandeja', 'bandejasCiclo']) expect(pide).not.toContain(nuevo);
+  });
 });
 
 describe('minutosEntre', () => {

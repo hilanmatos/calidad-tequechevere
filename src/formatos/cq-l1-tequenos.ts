@@ -1,8 +1,10 @@
-import type { DefinicionFormato } from '../motor/tipos';
+import type { Contexto, DefinicionFormato } from '../motor/tipos';
 import {
   ambiente, apariencia, bandejasCongelacion, cierreEmpaque, conforme, etapaSensorial, metales, num, opcion, pct, pesoEmpaqueCampos,
   pesoRellenoCampo, pesoUnidadCampo, POR_DEFINIR, presentacion, temp, tempAgua, vencimiento,
 } from './comunes';
+
+const llevaCongelacion = (c: Contexto) => c.producto?.llevaCongelacion !== false;
 
 export const cqL1Tequenos: DefinicionFormato = {
   codigo: 'cq-l1-tequenos',
@@ -64,9 +66,11 @@ export const cqL1Tequenos: DefinicionFormato = {
       // Las boquitas no pasan por congelación; los registros viejos que ya la tienen la siguen mostrando.
       aplica: (c) => c.producto?.llevaCongelacion !== false || c.valores.tInicialCong != null || c.valores.aparienciaCong != null,
       campos: [
-        // tInicialCong conserva su id para el histórico: antes era "Temperatura inicial del producto".
-        ...bandejasCongelacion('tInicialCong', { pcc: 'PCC2', limite: POR_DEFINIR }),
-        num('bandejasCiclo', 'Número de bandejas por ciclo', 'uds', { decimales: 0 }),
+        // tInicialCong conserva su id para el histórico: antes era "Temperatura inicial del producto". Los campos
+        // nuevos no se piden en productos sin congelación (un registro viejo de boquita solo muestra lo que tenía).
+        ...bandejasCongelacion('tInicialCong', { pcc: 'PCC2', limite: POR_DEFINIR })
+          .map((campo) => (campo.id === 'tInicialCong' ? campo : { ...campo, aplica: llevaCongelacion })),
+        num('bandejasCiclo', 'Número de bandejas por ciclo', 'uds', { decimales: 0, aplica: llevaCongelacion }),
         apariencia('aparienciaCong', 'Apariencia'),
       ],
     },
