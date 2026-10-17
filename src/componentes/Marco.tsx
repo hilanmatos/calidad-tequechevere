@@ -20,7 +20,7 @@ export function Marco() {
   const { usuario, salir } = useSesion();
   const repo = useRepo();
   const { pathname } = useLocation();
-  const enCaptura = pathname.startsWith('/registrar') || pathname.endsWith('/editar');
+  const enCaptura = pathname.startsWith('/registrar') || pathname.endsWith('/editar') || pathname.endsWith('/completar');
   const items = NAV.filter((i) => !i.soloAdmin || usuario.rol === 'admin');
 
   return (
@@ -79,7 +79,7 @@ export function Marco() {
         </div>
       )}
 
-      <main className={cx('mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-10 py-6 lg:py-8', enCaptura ? 'pb-36' : 'pb-28 lg:pb-12')}>
+      <main className={cx('mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-10 py-6 lg:py-8', enCaptura ? 'pb-36 lg:pb-36' : 'pb-28 lg:pb-12')}>
         <Outlet />
       </main>
 

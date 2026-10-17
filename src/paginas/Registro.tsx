@@ -1,4 +1,4 @@
-import { ArrowLeft, History, Pencil, Printer, Trash2 } from 'lucide-react';
+import { ArrowLeft, CalendarClock, Clock, History, Pencil, Printer, Trash2 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useSesion } from '../auth/Sesion';
 import { VistaFoto } from '../componentes/campos/basicos';
@@ -6,9 +6,10 @@ import { Boton, Cargando, ChipEstadoRegistro, cx, IconoFormato, MensajeError, Pa
 import { formato } from '../formatos';
 import { useCierre, useEliminarRegistro, useHistorial, useOperarios, useProductos, useRegistro } from '../datos/hooks';
 import type { Registro } from '../datos/repositorio';
-import { fechaLarga, horaLegible, momentoLegible } from '../lib/fechas';
+import { fechaLimite, pendientesDeRegistro, puedeCompletar } from '../lib/dia-siguiente';
+import { fechaCorta, fechaLarga, horaLegible, hoyPanama, momentoLegible } from '../lib/fechas';
 import { textoCampo } from '../lib/mostrar';
-import { camposVisibles, estadoCampo, etapasVisibles, fmt, limitePeso, resumenMuestras } from '../motor/evaluar';
+import { camposVisibles, dentroDeVentana, estadoCampo, etapasVisibles, fmt, limitePeso, resumenMuestras } from '../motor/evaluar';
 import type { CampoChecklist, CampoMuestras, Contexto, DefinicionFormato, FilaMuestras } from '../motor/tipos';
 import type { ValorChecklist } from '../motor/materializar';
 import { puedeEditar } from './Captura';
@@ -38,6 +39,11 @@ function Detalle({ registro, def }: { registro: Registro; def: DefinicionFormato
     valores: registro.datos, producto, productos: productos.data, operarios: operarios.data, fecha: registro.fecha, area: registro.area,
   };
   const reales = registro.desviaciones.filter((d) => d.severidad !== 'por-confirmar');
+  const pendientes = pendientesDeRegistro(registro, productos.data);
+  const enPlazo = dentroDeVentana(registro.fecha, hoyPanama());
+  // pasado el plazo, lo que no se llenó ya no está "pendiente": queda sin registrar
+  const pendiente = new Set(enPlazo ? pendientes.map((f) => f.campoId) : []);
+  const completable = pendientes.length > 0 && puedeCompletar(registro, usuario);
 
   const borrar = async () => {
     if (!window.confirm('¿Eliminar este registro? Queda guardado en el historial de cambios, pero deja de aparecer en el sistema.')) return;
@@ -54,6 +60,9 @@ function Detalle({ registro, def }: { registro: Registro; def: DefinicionFormato
         </Link>
         <div className="ml-auto flex flex-wrap gap-2">
           {cierre.data && <span className="h-12 px-4 rounded-campo bg-tinta text-white font-bold flex items-center">Día cerrado</span>}
+          {completable && (
+            <Link to={`/registro/${registro.id}/completar`}><Boton variante="primario" icono={CalendarClock}>Completar datos del día siguiente</Boton></Link>
+          )}
           {puedeEditar(registro, usuario, !!cierre.data) && (
             <Link to={`/registro/${registro.id}/editar`}><Boton variante="vino" icono={Pencil}>Editar</Boton></Link>
           )}
@@ -61,6 +70,25 @@ function Detalle({ registro, def }: { registro: Registro; def: DefinicionFormato
           {usuario.rol === 'admin' && <Boton variante="peligro" icono={Trash2} onClick={borrar} cargando={eliminar.isPending}>Eliminar</Boton>}
         </div>
       </div>
+
+      {pendientes.length > 0 && (
+        <section className="no-imprimir rounded-panel border-2 border-linea bg-white px-5 py-4 flex flex-wrap items-center gap-4">
+          <span className="size-12 rounded-full bg-dorado-claro text-vino-oscuro grid place-items-center shrink-0"><Clock size={22} aria-hidden /></span>
+          <div className="flex-1 min-w-60">
+            <p className="text-lg font-bold">
+              {pendientes.length === 1 ? 'Falta 1 dato del día siguiente' : `Faltan ${pendientes.length} datos del día siguiente`}
+            </p>
+            <p className="text-tinta-suave">
+              {pendientes.map((f) => f.etiqueta).join(', ')}.{' '}
+              {completable
+                ? `Se pueden completar hasta el ${fechaCorta(fechaLimite(registro.fecha))}, aunque el día esté cerrado.`
+                : enPlazo
+                  ? `Los completa quien hizo el registro (${registro.realizadoPor || 'Calidad'}) o un administrador, hasta el ${fechaCorta(fechaLimite(registro.fecha))}.`
+                  : 'Ya pasó el plazo para completarlos: solo un administrador puede corregir el registro.'}
+            </p>
+          </div>
+        </section>
+      )}
 
       <article className="hoja-impresion rounded-panel bg-white border border-linea p-6 lg:p-8 flex flex-col gap-6">
         <header className="flex flex-wrap items-start gap-5 border-b border-linea pb-5">
@@ -124,7 +152,9 @@ function Detalle({ registro, def }: { registro: Registro; def: DefinicionFormato
                       {c.etiqueta}{c.pcc && <span className="ml-1.5 rounded bg-vino px-1 text-[11px] font-bold text-white">{c.pcc}</span>}
                     </span>
                     <span className={cx('font-bold text-right cifra', estado === 'fuera' ? 'text-fuera' : estado === 'alerta' ? 'text-confirmar' : '')}>
-                      {textoCampo(c, ctx) || <span className="text-linea font-normal">—</span>}
+                      {textoCampo(c, ctx) || (pendiente.has(c.id)
+                        ? <span className="text-tinta-suave font-normal italic">pendiente</span>
+                        : <span className="text-linea font-normal">—</span>)}
                     </span>
                   </div>
                 );

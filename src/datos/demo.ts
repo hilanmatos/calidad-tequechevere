@@ -28,7 +28,7 @@ const RANGOS: Record<string, [number, number]> = {
   pctNoConformeFormado: [0, 5], sanitec: [20, 20], tiempoHigienizacion: [3, 3], tiempoMezclado: [7, 7], ph: [3.75, 3.98],
   tEnvasado: [8, 10], tiempoExpuesto: [28, 38], pesoNeto: [599, 604], tAlmacenamiento: [2.5, 4],
   tiCongelacion: [8, 12], tfCongelacion: [-4, -1], tFritura: [170, 178], tiCongEmpaque: [-4, -1], tfCongEmpaque: [-19, -17],
-  bandejasCiclo: [10, 14], frioPBDisplay: [2.5, 4.4], frioPADisplay: [2.6, 4.8], congPBDisplay: [-20.5, -17.9], congPADisplay: [-19.8, -16.8],
+  bandejasCiclo: [10, 14], tUltimaBandeja: [3, 8], alturaAgua: [12, 15], tFinalEmpaque: [-19, -16], frioPBDisplay: [2.5, 4.4], frioPADisplay: [2.6, 4.8], congPBDisplay: [-20.5, -17.9], congPADisplay: [-19.8, -16.8],
   frioPBPistola: [-2.5, -0.5], frioPAPistola: [-1.2, 1], congPBPistola: [-29, -25.5], congPAPistola: [-16, -12],
 };
 
@@ -50,7 +50,13 @@ function valorDemo(campo: Campo, ctx: Contexto, r: () => number): unknown {
         const base = p?.pesoUnidadG ?? 30;
         return entre(base - 0.8, base + 1.2, 1);
       }
-      if (campo.id === 'pesoRelleno') return p?.pesoRellenoG ? entre(p.pesoRellenoG - 0.8, p.pesoRellenoG + 0.8, 1) : undefined;
+      if (campo.id === 'pesoRelleno') {
+        // con rango del SQF: casi siempre dentro, a veces un poco por encima
+        if (p?.pesoRellenoMinG !== undefined && p.pesoRellenoMaxG !== undefined) {
+          return r() < 0.95 ? entre(p.pesoRellenoMinG, p.pesoRellenoMaxG, 1) : entre(p.pesoRellenoMaxG, p.pesoRellenoMaxG + 0.6, 1);
+        }
+        return p?.pesoRellenoG ? entre(p.pesoRellenoG - 0.8, p.pesoRellenoG + 0.8, 1) : undefined;
+      }
       if (campo.id === 'pesoEmpaque') {
         const d = p?.pesoDeclaradoKg ?? 0.5;
         return entre(d - 0.002, d + 0.04, 3);
@@ -69,8 +75,18 @@ function valorDemo(campo: Campo, ctx: Contexto, r: () => number): unknown {
       if (campo.opcional && r() < 0.4) return undefined;
       return r() < 0.95 ? campo.opciones[0] : campo.opciones[Math.min(1, campo.opciones.length - 1)];
     case 'fecha':
-    case 'texto':
       return campo.sugerido?.(ctx);
+    case 'texto':
+      if (campo.id === 'loteQueso') return `QB-${2600 + Math.floor(r() * 90)}`;
+      return campo.sugerido?.(ctx);
+    case 'hora': {
+      // la última bandeja sale entre 40 y 90 minutos después de la primera
+      const primera = ctx.valores.horaPrimeraBandeja;
+      const min = typeof primera === 'string' && campo.id === 'horaUltimaBandeja'
+        ? Number(primera.slice(0, 2)) * 60 + Number(primera.slice(3)) + 40 + Math.floor(r() * 50)
+        : 9 * 60 + Math.floor(r() * 150);
+      return `${String(Math.floor(min / 60) % 24).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+    }
     case 'checklist': {
       const ops = (ctx.operarios ?? []).filter((o) => o.area === ctx.area && o.activo);
       const malo = campo.estados.find((e) => e.tono === 'fuera')!.id;

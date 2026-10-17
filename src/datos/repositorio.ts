@@ -99,6 +99,11 @@ export interface Repositorio {
   registro(id: string): Promise<Registro | null>;
   porClave(clave: string): Promise<Registro | null>;
   guardarRegistro(r: NuevoRegistro): Promise<Registro>;
+  /**
+   * Llena los campos del día siguiente que quedaron vacíos, aunque el día esté cerrado: solo el creador o un
+   * administrador, hasta 2 días después de la fecha del registro. No cambia datos ya medidos.
+   */
+  completarRegistro(id: string, datos: Valores, desviaciones: Desviacion[], tienePcc: boolean, accionCorrectiva?: string): Promise<Registro>;
   eliminarRegistro(id: string): Promise<void>;
   historial(id: string): Promise<CambioRegistro[]>;
 

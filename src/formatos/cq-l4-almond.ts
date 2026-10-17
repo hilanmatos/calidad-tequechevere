@@ -6,7 +6,7 @@ import {
 
 export const cqL4Almond: DefinicionFormato = {
   codigo: 'cq-l4-almond',
-  version: 1,
+  version: 2,
   nombre: 'Control de calidad Línea 4 Almond Bites',
   nombreCorto: 'Almond Bites',
   rotulo: 'L4',
@@ -48,7 +48,8 @@ export const cqL4Almond: DefinicionFormato = {
       ],
     },
     {
-      id: 'empaque', titulo: 'Empaque',
+      id: 'empaque', titulo: 'Empaque', diferida: true,
+      descripcion: 'Hay referencias que se empacan al día siguiente: puedes guardar sin estos datos y completarlos después.',
       campos: [
         presentacion,
         vencimiento,

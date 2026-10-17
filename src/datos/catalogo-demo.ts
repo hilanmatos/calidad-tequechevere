@@ -3,15 +3,15 @@ import type { Operario, Producto } from '../motor/tipos';
 type SinId<T> = Omit<T, 'id'>;
 
 const p = (x: Partial<Producto> & Pick<Producto, 'codigo' | 'nombre' | 'linea' | 'presentacion'>): SinId<Producto> => ({
-  llevaRelleno: true, esPrecocido: false, activo: true, vidaUtilMeses: 6, ...x,
+  llevaRelleno: true, esPrecocido: false, llevaCongelacion: true, activo: true, vidaUtilMeses: 6, ...x,
 });
 
-/** Productos de ejemplo para el modo demo. Los pesos son ilustrativos. */
+/** Productos de ejemplo para el modo demo. Los pesos son ilustrativos; los rangos de relleno de L1 siguen el SQF. */
 export const PRODUCTOS_DEMO: SinId<Producto>[] = [
-  p({ codigo: 'PT011', nombre: 'Tequeño full queso', linea: 'cq-l1-tequenos', presentacion: '12 unidades', pesoUnidadG: 37, pesoUnidadMinG: 35, pesoUnidadMaxG: 39, pesoRellenoG: 12, pesoDeclaradoKg: 0.444 }),
-  p({ codigo: 'PT013', nombre: 'Tequeño full queso precocido', linea: 'cq-l1-tequenos', presentacion: '20 unidades', pesoUnidadG: 38, pesoUnidadMinG: 36, pesoUnidadMaxG: 40, pesoRellenoG: 12, pesoDeclaradoKg: 0.76, esPrecocido: true }),
-  p({ codigo: 'PT026', nombre: 'Tequeño full queso precocido', linea: 'cq-l1-tequenos', presentacion: '24 unidades', pesoUnidadG: 38, pesoUnidadMinG: 36, pesoUnidadMaxG: 40, pesoRellenoG: 12, pesoDeclaradoKg: 0.912, esPrecocido: true }),
-  p({ codigo: 'PT014', nombre: 'Tequeño boquita', linea: 'cq-l1-tequenos', presentacion: '24 unidades', pesoUnidadG: 20, pesoUnidadMinG: 19, pesoUnidadMaxG: 22, pesoRellenoG: 6, pesoDeclaradoKg: 0.48 }),
+  p({ codigo: 'PT011', nombre: 'Tequeño full queso', linea: 'cq-l1-tequenos', presentacion: '12 unidades', pesoUnidadG: 37, pesoUnidadMinG: 35, pesoUnidadMaxG: 39, pesoRellenoG: 17, pesoRellenoMinG: 16, pesoRellenoMaxG: 18, pesoDeclaradoKg: 0.444 }),
+  p({ codigo: 'PT013', nombre: 'Tequeño full queso precocido', linea: 'cq-l1-tequenos', presentacion: '20 unidades', pesoUnidadG: 38, pesoUnidadMinG: 36, pesoUnidadMaxG: 40, pesoRellenoG: 17, pesoRellenoMinG: 16, pesoRellenoMaxG: 18, pesoDeclaradoKg: 0.76, esPrecocido: true }),
+  p({ codigo: 'PT026', nombre: 'Tequeño full queso precocido', linea: 'cq-l1-tequenos', presentacion: '24 unidades', pesoUnidadG: 38, pesoUnidadMinG: 36, pesoUnidadMaxG: 40, pesoRellenoG: 17, pesoRellenoMinG: 16, pesoRellenoMaxG: 18, pesoDeclaradoKg: 0.912, esPrecocido: true }),
+  p({ codigo: 'PT014', nombre: 'Tequeño boquita', linea: 'cq-l1-tequenos', presentacion: '24 unidades', pesoUnidadG: 20, pesoUnidadMinG: 19, pesoUnidadMaxG: 22, pesoRellenoG: 10.5, pesoRellenoMinG: 10, pesoRellenoMaxG: 11, pesoDeclaradoKg: 0.48, llevaCongelacion: false }),
   p({ codigo: 'PD001', nombre: 'Discos', linea: 'cq-l2-empanadas-trigo', presentacion: '12 unidades', pesoUnidadG: 38, pesoUnidadMinG: 36, pesoUnidadMaxG: 40, pesoDeclaradoKg: 0.46, llevaRelleno: false }),
   p({ codigo: 'PE010', nombre: 'Pastelitos de pollo', linea: 'cq-l2-empanadas-trigo', presentacion: '30 unidades', pesoUnidadG: 33, pesoUnidadMinG: 31, pesoUnidadMaxG: 35, pesoRellenoG: 12, pesoDeclaradoKg: 1 }),
   p({ codigo: 'PE011', nombre: 'Pastelitos de queso', linea: 'cq-l2-empanadas-trigo', presentacion: '30 unidades', pesoUnidadG: 32, pesoUnidadMinG: 30, pesoUnidadMaxG: 34, pesoRellenoG: 11, pesoDeclaradoKg: 1 }),

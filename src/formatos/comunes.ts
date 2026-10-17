@@ -51,6 +51,11 @@ const pesoUnidad = (p?: Producto): Limite | undefined =>
   p && (p.pesoUnidadMinG !== undefined || p.pesoUnidadMaxG !== undefined)
     ? { min: p.pesoUnidadMinG, max: p.pesoUnidadMaxG }
     : undefined;
+/** Rango del relleno por pieza; sin rango cargado en el producto, no hay límite. */
+const pesoRellenoLimite = (p?: Producto): Limite | undefined =>
+  p && (p.pesoRellenoMinG !== undefined || p.pesoRellenoMaxG !== undefined)
+    ? { min: p.pesoRellenoMinG, max: p.pesoRellenoMaxG }
+    : undefined;
 
 export const pesoUnidadCampo = (id = 'pesoPromedio', etiqueta = 'Peso promedio por unidad'): CampoNumero =>
   num(id, etiqueta, 'g', {
@@ -63,6 +68,7 @@ export const pesoRellenoCampo = (extra: Extra<CampoNumero> = {}): CampoNumero =>
   num('pesoRelleno', 'Peso promedio del relleno', 'g', {
     decimales: 1,
     referencia: (c) => c.producto?.pesoRellenoG,
+    limite: (c) => pesoRellenoLimite(c.producto),
     aplica: llevaRelleno,
     ...extra,
   });
@@ -78,6 +84,34 @@ export const tempAgua = temp('tAgua', 'Temperatura del agua', {
 });
 
 export const conRelleno = llevaRelleno;
+
+const aMinutos = (h: unknown): number | undefined => {
+  const m = typeof h === 'string' ? /^(\d{1,2}):(\d{2})$/.exec(h) : null;
+  return m ? Number(m[1]) * 60 + Number(m[2]) : undefined;
+};
+
+/** Minutos entre dos horas 'HH:MM'. Si la segunda es menor, asume que pasó la medianoche. */
+export function minutosEntre(desde: unknown, hasta: unknown): number | undefined {
+  const a = aMinutos(desde);
+  const b = aMinutos(hasta);
+  if (a === undefined || b === undefined) return undefined;
+  return b >= a ? b - a : b + 24 * 60 - a;
+}
+
+const tiempoEntreBandejas: CampoCalculado = {
+  id: 'tiempoEntreBandejas', etiqueta: 'Tiempo entre la primera y la última bandeja', tipo: 'calculado', unidad: 'min', decimales: 0,
+  formula: (c) => minutosEntre(c.valores.horaPrimeraBandeja, c.valores.horaUltimaBandeja),
+};
+
+/** Primera y última bandeja del ciclo de congelación. Ambas temperaturas llevan el mismo PCC y límite (`extra`).
+ *  La última bandeja puede salir tarde o al día siguiente: se completa después, como el empaque. */
+export const bandejasCongelacion = (idPrimera: string, extra: Extra<CampoNumero> = {}): Campo[] => [
+  temp(idPrimera, 'Temperatura de la primera bandeja', extra),
+  { id: 'horaPrimeraBandeja', etiqueta: 'Hora de la primera bandeja', tipo: 'hora' },
+  temp('tUltimaBandeja', 'Temperatura de la última bandeja', { ...extra, diferido: true }),
+  { id: 'horaUltimaBandeja', etiqueta: 'Hora de la última bandeja', tipo: 'hora', diferido: true },
+  { ...tiempoEntreBandejas, diferido: true },
+];
 
 const pesoDeclarado: CampoCalculado = {
   id: 'pesoDeclarado', etiqueta: 'Peso declarado del empaque', tipo: 'calculado', unidad: 'kg', decimales: 3,

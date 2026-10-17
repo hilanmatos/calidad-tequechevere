@@ -14,10 +14,13 @@ const aProducto = (f: Fila): Producto => ({
   pesoUnidadMinG: f.peso_unidad_min_g ?? undefined,
   pesoUnidadMaxG: f.peso_unidad_max_g ?? undefined,
   pesoRellenoG: f.peso_relleno_g ?? undefined,
+  pesoRellenoMinG: f.peso_relleno_min_g ?? undefined,
+  pesoRellenoMaxG: f.peso_relleno_max_g ?? undefined,
   pesoDeclaradoKg: f.peso_declarado_kg ?? undefined,
   vidaUtilMeses: f.vida_util_meses ?? undefined,
   llevaRelleno: f.lleva_relleno,
   esPrecocido: f.es_precocido,
+  llevaCongelacion: f.lleva_congelacion ?? true,
   activo: f.activo,
 });
 
@@ -31,10 +34,13 @@ const deProducto = (p: Producto): Fila => ({
   peso_unidad_min_g: p.pesoUnidadMinG ?? null,
   peso_unidad_max_g: p.pesoUnidadMaxG ?? null,
   peso_relleno_g: p.pesoRellenoG ?? null,
+  peso_relleno_min_g: p.pesoRellenoMinG ?? null,
+  peso_relleno_max_g: p.pesoRellenoMaxG ?? null,
   peso_declarado_kg: p.pesoDeclaradoKg ?? null,
   vida_util_meses: p.vidaUtilMeses ?? null,
   lleva_relleno: p.llevaRelleno,
   es_precocido: p.esPrecocido,
+  lleva_congelacion: p.llevaCongelacion !== false,
   activo: p.activo,
 });
 
@@ -182,6 +188,18 @@ export function repoSupabase(sb: SupabaseClient): Repositorio {
         }
         throw new Error(res.error.message);
       }
+      return aRegistro(res.data as Fila);
+    },
+    async completarRegistro(id, datos, desviaciones, tienePcc, accionCorrectiva) {
+      // las reglas (creador o admin, 2 días, solo campos diferidos vacíos) las aplica la función en la base
+      const res = await sb.rpc('completar_registro', {
+        p_id: id,
+        p_datos: datos,
+        p_desviaciones: desviaciones,
+        p_pcc: tienePcc,
+        p_accion_correctiva: accionCorrectiva ?? null,
+      });
+      if (res.error) throw new Error(res.error.message);
       return aRegistro(res.data as Fila);
     },
     async eliminarRegistro(id) {

@@ -218,17 +218,45 @@ export function desviaciones(def: DefinicionFormato, ctx: Contexto): Desviacion[
 
 const SIN_CAPTURA = new Set<Campo['tipo']>(['calculado', 'foto', 'checklist']);
 
-export function faltantes(def: DefinicionFormato, ctx: Contexto): Faltante[] {
+/** Campo que se mide al día siguiente, por sí mismo o porque toda su etapa lo es. */
+export function esDiferido(campo: Campo, etapa: Etapa): boolean {
+  return !!(etapa.diferida || campo.diferido);
+}
+
+/** Ids de todos los campos diferidos del formato (incluye calculados: cambian al completar). */
+export function camposDiferidos(def: DefinicionFormato): string[] {
+  return def.etapas.flatMap((e) => e.campos.filter((c) => esDiferido(c, e)).map((c) => c.id));
+}
+
+/** Obligatorios visibles y vacíos; `diferidos` elige entre los del día siguiente o los demás. */
+function vacios(def: DefinicionFormato, ctx: Contexto, diferidos: boolean): Faltante[] {
   const res: Faltante[] = [];
   for (const etapa of etapasVisibles(def, ctx)) {
     for (const campo of camposVisibles(etapa, ctx)) {
-      if (campo.opcional || SIN_CAPTURA.has(campo.tipo)) continue;
+      if (campo.opcional || SIN_CAPTURA.has(campo.tipo) || esDiferido(campo, etapa) !== diferidos) continue;
       if (estadoCampo(campo, ctx) === 'vacio') {
         res.push({ campoId: campo.id, etiqueta: campo.etiqueta, etapa: etapa.titulo });
       }
     }
   }
   return res;
+}
+
+/** Lo que impide guardar. Los campos del día siguiente no cuentan: van en pendientesDiferidos. */
+export function faltantes(def: DefinicionFormato, ctx: Contexto): Faltante[] {
+  return vacios(def, ctx, false);
+}
+
+/** Campos del día siguiente que siguen vacíos: el registro queda pendiente de completar. */
+export function pendientesDiferidos(def: DefinicionFormato, ctx: Contexto): Faltante[] {
+  return vacios(def, ctx, true);
+}
+
+/** Días después de la fecha del registro en que aún se completan los datos del día siguiente. */
+export const DIAS_PARA_COMPLETAR = 2;
+
+export function dentroDeVentana(fecha: string, hoy: string): boolean {
+  return fecha >= sumarDias(hoy, -DIAS_PARA_COMPLETAR);
 }
 
 export function hayPcc(d: Desviacion[]): boolean {

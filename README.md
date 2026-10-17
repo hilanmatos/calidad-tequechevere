@@ -12,6 +12,9 @@ con tablero de indicadores, historial y exportación a Excel.
   día, por día y área, o por lote, según el formato. **Cerrar el día** deja los registros como definitivos;
   solo un administrador puede reabrirlo.
 - **No asistió**: en higiene y lavado, la persona que faltó sale del monitoreo de ese día y no cuenta como falla.
+- **Datos del día siguiente**: la congelación de las empanadas y el empaque de las líneas se miden después. Se puede
+  guardar sin ellos y completarlos desde el registro (o desde "Pendientes del día siguiente" en Hoy) hasta 2 días
+  después, aunque el día esté cerrado. Esa vía solo llena lo vacío; lo ya medido no cambia y todo queda en el historial.
 - **Enviar informe** (en Hoy y en el Tablero): PDF con gráficos, desviaciones y acciones correctivas, o Excel con
   todos los datos. En la tablet abre el menú para enviarlo por WhatsApp, correo o Drive.
 - **Historial**: todos los registros con filtros y exportación a Excel.
@@ -33,6 +36,8 @@ temp('tInternaFreido', 'Temperatura interna', { pcc: 'PCC1', limite: { min: 74 }
 - `limite: { min, max, porConfirmar: true }` lo marca en índigo como aviso, sin bloquear.
 - `POR_DEFINIR` deja el PCC registrado con la etiqueta "límite por definir".
 - `opcional: true` permite guardar sin llenarlo.
+- `diferido: true` en un campo (o `diferida: true` en la etapa) lo deja para el día siguiente. Si cambias cuáles son,
+  actualiza también `campos_diferidos` en una migración: la prueba `src/datos/migracion.test.ts` avisa si no coinciden.
 - `aplica: (c) => c.producto?.esPrecocido` muestra el campo solo cuando corresponde.
 
 Después: `git commit` y `git push`. GitHub publica la nueva versión en un par de minutos.

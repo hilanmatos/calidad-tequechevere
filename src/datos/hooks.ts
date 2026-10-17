@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext } from 'react';
-import type { Operario, Producto } from '../motor/tipos';
+import type { Desviacion, Operario, Producto, Valores } from '../motor/tipos';
 import type { CierreDia, FiltroRegistros, NuevoRegistro, Perfil, Repositorio } from './repositorio';
 
 export const RepoContexto = createContext<Repositorio | null>(null);
@@ -51,6 +51,20 @@ export function useGuardarRegistro() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (r: NuevoRegistro) => repo.guardarRegistro(r),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ['registros'] });
+      qc.invalidateQueries({ queryKey: ['registro', r.id] });
+      qc.invalidateQueries({ queryKey: ['historial', r.id] });
+    },
+  });
+}
+
+export function useCompletarRegistro() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (c: { id: string; datos: Valores; desviaciones: Desviacion[]; tienePcc: boolean; accionCorrectiva?: string }) =>
+      repo.completarRegistro(c.id, c.datos, c.desviaciones, c.tienePcc, c.accionCorrectiva),
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ['registros'] });
       qc.invalidateQueries({ queryKey: ['registro', r.id] });

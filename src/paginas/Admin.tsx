@@ -45,7 +45,7 @@ function Campo({ etiqueta, children, className }: { etiqueta: string; children: 
 }
 
 const nuevoProducto = (): Producto => ({
-  id: '', codigo: '', nombre: '', linea: LINEAS[0].codigo, presentacion: '', llevaRelleno: true, esPrecocido: false, activo: true, vidaUtilMeses: 6,
+  id: '', codigo: '', nombre: '', linea: LINEAS[0].codigo, presentacion: '', llevaRelleno: true, esPrecocido: false, llevaCongelacion: true, activo: true, vidaUtilMeses: 6,
 });
 
 function NumeroOpcional({ valor, cambiar, etiqueta }: { valor?: number; cambiar: (v?: number) => void; etiqueta: string }) {
@@ -98,12 +98,15 @@ function Productos() {
             <NumeroOpcional etiqueta="Peso mínimo por unidad (g)" valor={p.pesoUnidadMinG} cambiar={(v) => fijar({ pesoUnidadMinG: v })} />
             <NumeroOpcional etiqueta="Peso máximo por unidad (g)" valor={p.pesoUnidadMaxG} cambiar={(v) => fijar({ pesoUnidadMaxG: v })} />
             <NumeroOpcional etiqueta="Peso teórico del relleno (g)" valor={p.pesoRellenoG} cambiar={(v) => fijar({ pesoRellenoG: v })} />
+            <NumeroOpcional etiqueta="Relleno mínimo por pieza (g)" valor={p.pesoRellenoMinG} cambiar={(v) => fijar({ pesoRellenoMinG: v })} />
+            <NumeroOpcional etiqueta="Relleno máximo por pieza (g)" valor={p.pesoRellenoMaxG} cambiar={(v) => fijar({ pesoRellenoMaxG: v })} />
             <NumeroOpcional etiqueta="Peso declarado del empaque (kg)" valor={p.pesoDeclaradoKg} cambiar={(v) => fijar({ pesoDeclaradoKg: v })} />
             <NumeroOpcional etiqueta="Vida útil (meses)" valor={p.vidaUtilMeses} cambiar={(v) => fijar({ vidaUtilMeses: v })} />
             <div className="flex flex-col gap-2 justify-end">
-              {([['llevaRelleno', 'Lleva relleno'], ['esPrecocido', 'Es precocido (se fríe)'], ['activo', 'Activo']] as const).map(([k, t]) => (
+              {([['llevaRelleno', 'Lleva relleno'], ['esPrecocido', 'Es precocido (se fríe)'], ['llevaCongelacion', 'Pasa por congelación'], ['activo', 'Activo']] as const).map(([k, t]) => (
                 <label key={k} className="flex items-center gap-2 font-bold">
-                  <input type="checkbox" className="size-5 accent-vino" checked={p[k]} onChange={(e) => fijar({ [k]: e.target.checked })} /> {t}
+                  {/* sin dato, llevaCongelacion cuenta como sí */}
+                  <input type="checkbox" className="size-5 accent-vino" checked={p[k] !== false} onChange={(e) => fijar({ [k]: e.target.checked })} /> {t}
                 </label>
               ))}
             </div>
@@ -133,12 +136,15 @@ function Productos() {
                     {ps.map((x) => (
                       <tr key={x.id} className={cx('border-b border-linea/60 last:border-0', !x.activo && 'opacity-50')}>
                         <td className="px-3 py-2.5 font-bold">{x.codigo || '—'}</td>
-                        <td className="px-3 py-2.5"><strong>{x.nombre}</strong><span className="block text-tinta-suave">{x.presentacion}{x.esPrecocido ? ', precocido' : ''}</span></td>
+                        <td className="px-3 py-2.5"><strong>{x.nombre}</strong><span className="block text-tinta-suave">{x.presentacion}{x.esPrecocido ? ', precocido' : ''}{x.llevaCongelacion === false ? ', sin congelación' : ''}</span></td>
                         <td className="px-3 py-2.5 cifra">
                           {x.pesoUnidadG !== undefined ? `${fmt(x.pesoUnidadG)} g` : <span className="text-confirmar">sin cargar</span>}
                           {(x.pesoUnidadMinG !== undefined || x.pesoUnidadMaxG !== undefined) && <span className="block text-tinta-suave">{fmt(x.pesoUnidadMinG)} a {fmt(x.pesoUnidadMaxG)} g</span>}
                         </td>
-                        <td className="px-3 py-2.5 cifra">{x.llevaRelleno ? (x.pesoRellenoG !== undefined ? `${fmt(x.pesoRellenoG)} g` : '—') : 'No lleva'}</td>
+                        <td className="px-3 py-2.5 cifra">
+                          {x.llevaRelleno ? (x.pesoRellenoG !== undefined ? `${fmt(x.pesoRellenoG)} g` : '—') : 'No lleva'}
+                          {x.llevaRelleno && (x.pesoRellenoMinG !== undefined || x.pesoRellenoMaxG !== undefined) && <span className="block text-tinta-suave whitespace-nowrap">{fmt(x.pesoRellenoMinG)} a {fmt(x.pesoRellenoMaxG)} g</span>}
+                        </td>
                         <td className="px-3 py-2.5 cifra">{x.pesoDeclaradoKg !== undefined ? `${fmt(x.pesoDeclaradoKg)} kg` : <span className="text-confirmar">sin cargar</span>}</td>
                         <td className="px-3 py-2.5">{x.vidaUtilMeses ? `${x.vidaUtilMeses} meses` : '—'}</td>
                         <td className="px-3 py-2.5">{x.activo ? 'Activo' : 'Inactivo'}</td>

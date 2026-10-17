@@ -70,8 +70,9 @@ const aProducto = (p: Fila): Producto => ({
   presentacion: p.presentacion as string, pesoUnidadG: (p.peso_unidad_g as number) ?? undefined,
   pesoUnidadMinG: (p.peso_unidad_min_g as number) ?? undefined, pesoUnidadMaxG: (p.peso_unidad_max_g as number) ?? undefined,
   pesoRellenoG: (p.peso_relleno_g as number) ?? undefined, pesoDeclaradoKg: (p.peso_declarado_kg as number) ?? undefined,
+  pesoRellenoMinG: (p.peso_relleno_min_g as number) ?? undefined, pesoRellenoMaxG: (p.peso_relleno_max_g as number) ?? undefined,
   vidaUtilMeses: (p.vida_util_meses as number) ?? undefined, llevaRelleno: p.lleva_relleno as boolean,
-  esPrecocido: p.es_precocido as boolean, activo: p.activo as boolean,
+  esPrecocido: p.es_precocido as boolean, llevaCongelacion: (p.lleva_congelacion as boolean) ?? true, activo: p.activo as boolean,
 });
 
 const clave = (s: string) => s.normalize('NFD').replace(/\p{Mn}/gu, '').toLowerCase().replace(/[.\s]+/g, ' ').trim();

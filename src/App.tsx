@@ -4,6 +4,7 @@ import { useSesion } from './auth/Sesion';
 import { Marco } from './componentes/Marco';
 import { Cargando } from './componentes/ui';
 import { Captura } from './paginas/Captura';
+import { Completar } from './paginas/Completar';
 import { Historial } from './paginas/Historial';
 import { Hoy } from './paginas/Hoy';
 import { DetalleRegistro } from './paginas/Registro';
@@ -21,6 +22,7 @@ export function App() {
         <Route path="registrar/:codigo" element={<Captura />} />
         <Route path="registro/:id" element={<DetalleRegistro />} />
         <Route path="registro/:id/editar" element={<Captura />} />
+        <Route path="registro/:id/completar" element={<Completar />} />
         <Route path="historial" element={<Historial />} />
         <Route path="tablero" element={<Suspense fallback={<Cargando />}><Tablero /></Suspense>} />
         {usuario.rol === 'admin' && (

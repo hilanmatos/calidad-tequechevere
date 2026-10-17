@@ -7,7 +7,7 @@ import { EntradaChecklist } from './Checklist';
 import { EntradaMuestras } from './Muestras';
 import { TarjetaCampo } from './TarjetaCampo';
 
-export function Campo({ campo, ctx, cambiar }: { campo: TCampo; ctx: Contexto; cambiar: (id: string, v: unknown) => void }) {
+export function Campo({ campo, ctx, cambiar, diferido }: { campo: TCampo; ctx: Contexto; cambiar: (id: string, v: unknown) => void; diferido?: boolean }) {
   const valor = ctx.valores[campo.id];
   const fijar = (v: unknown) => cambiar(campo.id, v);
   const estado = estadoCampo(campo, ctx);
@@ -36,6 +36,7 @@ export function Campo({ campo, ctx, cambiar }: { campo: TCampo; ctx: Contexto; c
       estado={estado}
       ayuda={campo.ayuda}
       opcional={campo.opcional}
+      diferido={diferido}
       ancho={ancho}
     >
       {control}

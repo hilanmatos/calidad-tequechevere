@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, ChevronLeft, ChevronRight, CircleCheck, Eye, Lock, Pencil, Save } from 'lucide-react';
+import { ArrowLeft, CalendarClock, Check, ChevronLeft, ChevronRight, CircleCheck, Clock, Eye, Lock, Pencil, Save } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useSesion } from '../auth/Sesion';
@@ -9,10 +9,11 @@ import { formato } from '../formatos';
 import { useCierre, useGuardarRegistro, useOperarios, useProductos, useReabrirDia, useRegistro, useRegistroPorClave, useRegistros } from '../datos/hooks';
 import type { CierreDia, Registro, Usuario } from '../datos/repositorio';
 import { DESCRIPCION_AREA } from '../formatos/comunes';
-import { fechaLarga, hoyPanama, horaLegible, horaPanama } from '../lib/fechas';
-import { camposVisibles, claveUnica, desviaciones, etapasVisibles, faltantes, hayPcc } from '../motor/evaluar';
+import { fechaLimite, pendientesDeRegistro, puedeCompletar } from '../lib/dia-siguiente';
+import { fechaCorta, fechaLarga, hoyPanama, horaLegible, horaPanama } from '../lib/fechas';
+import { camposVisibles, claveUnica, desviaciones, esDiferido, etapasVisibles, faltantes, hayPcc, pendientesDiferidos } from '../motor/evaluar';
 import { materializar, rutasFotos, valoresEfectivos } from '../motor/materializar';
-import type { Contexto, DefinicionFormato, Desviacion, Valores } from '../motor/tipos';
+import type { Contexto, DefinicionFormato, Desviacion, Faltante, Valores } from '../motor/tipos';
 
 interface Encabezado {
   fecha: string;
@@ -110,6 +111,8 @@ function Asistente({ def, registro }: { def: DefinicionFormato; registro?: Regis
   const actual = pasos[Math.min(paso, pasos.length - 1)];
   const desv = desviaciones(def, ctx);
   const falt = faltantes(def, ctx);
+  // los del día siguiente no impiden guardar: quedan pendientes en el registro
+  const pend = pendientesDiferidos(def, ctx);
   const pcc = hayPcc(desv);
 
   const faltaEnc: string[] = [];
@@ -190,7 +193,8 @@ function Asistente({ def, registro }: { def: DefinicionFormato; registro?: Regis
         claveUnica: clave ?? undefined,
       });
       try { localStorage.removeItem(claveBorrador); } catch { /* sin almacenamiento */ }
-      avisar(registro ? 'Cambios guardados' : 'Registro guardado');
+      const quedan = pend.length ? `. Quedan ${pend.length} ${pend.length === 1 ? 'dato' : 'datos'} para el día siguiente` : '';
+      avisar(`${registro ? 'Cambios guardados' : 'Registro guardado'}${quedan}`);
       navegar(registro ? `/registro/${r.id}` : '/');
     } catch (e) {
       avisar(e instanceof Error ? `No se guardó: ${e.message}` : 'No se guardó el registro. Revisa la conexión.', 'error');
@@ -203,6 +207,7 @@ function Asistente({ def, registro }: { def: DefinicionFormato; registro?: Regis
     const titulo = pasos.find((p) => p.id === pid)?.titulo;
     return falt.filter((f) => f.etapa === titulo).length;
   };
+  const diferidosDe = (titulo: string) => pend.filter((f) => f.etapa === titulo).length;
   const alertasDe = (titulo: string) => desv.filter((d) => d.etapa === titulo && d.severidad !== 'por-confirmar').length;
 
   return (
@@ -239,8 +244,9 @@ function Asistente({ def, registro }: { def: DefinicionFormato; registro?: Regis
       <nav ref={navPasos} aria-label="Etapas del formato" className="no-imprimir -mx-4 px-4 overflow-x-auto [scrollbar-width:none]">
         <ol className="flex gap-2 min-w-max">
           {pasos.map((p, i) => {
-            const pend = pendientesDe(p.id);
+            const faltan = pendientesDe(p.id);
             const alert = p.id.startsWith('__') ? 0 : alertasDe(p.titulo);
+            const despues = p.id.startsWith('__') ? 0 : diferidosDe(p.titulo);
             const activo = i === paso;
             return (
               <li key={p.id}>
@@ -252,8 +258,11 @@ function Asistente({ def, registro }: { def: DefinicionFormato; registro?: Regis
                     activo ? 'bg-vino border-vino text-white' : 'bg-white border-linea text-tinta hover:border-vino/40')}
                 >
                   <span className={cx('size-8 rounded-full grid place-items-center text-sm',
-                    activo ? 'bg-dorado text-vino-oscuro' : alert ? 'bg-fuera text-white' : pend === 0 && i < paso ? 'bg-ok text-white' : 'bg-escarcha-2 text-tinta-suave')}>
-                    {alert ? '!' : pend === 0 && i < paso ? <Check size={16} /> : i + 1}
+                    activo ? 'bg-dorado text-vino-oscuro' : alert ? 'bg-fuera text-white'
+                      : faltan === 0 && despues > 0 && i < paso ? 'bg-dorado-claro text-vino-oscuro'
+                        : faltan === 0 && i < paso ? 'bg-ok text-white' : 'bg-escarcha-2 text-tinta-suave')}>
+                    {alert ? '!' : faltan === 0 && despues > 0 && i < paso ? <Clock size={16} aria-label="Para el día siguiente" />
+                      : faltan === 0 && i < paso ? <Check size={16} /> : i + 1}
                   </span>
                   {p.titulo}
                 </button>
@@ -270,7 +279,7 @@ function Asistente({ def, registro }: { def: DefinicionFormato; registro?: Regis
           )}
           {actual.id === PASO_RESUMEN && (
             <PasoResumen
-              faltaEnc={faltaEnc} falt={falt} desv={desv} accion={accion} obs={obs} usuario={registro?.realizadoPor || usuario.nombre}
+              faltaEnc={faltaEnc} falt={falt} pend={pend} limite={fechaLimite(enc.fecha)} desv={desv} accion={accion} obs={obs} usuario={registro?.realizadoPor || usuario.nombre}
               setAccion={(t) => { setTocado(true); setAccion(t); }} setObs={(t) => { setTocado(true); setObs(t); }}
               irA={irACampo} irADatos={() => setPaso(0)}
             />
@@ -281,7 +290,7 @@ function Asistente({ def, registro }: { def: DefinicionFormato; registro?: Regis
               <>
                 {etapa.descripcion && <p className="text-tinta-suave text-lg">{etapa.descripcion}</p>}
                 <div className="grid md:grid-cols-2 gap-4">
-                  {camposVisibles(etapa, ctx).map((c) => <Campo key={c.id} campo={c} ctx={ctx} cambiar={cambiar} />)}
+                  {camposVisibles(etapa, ctx).map((c) => <Campo key={c.id} campo={c} ctx={ctx} cambiar={cambiar} diferido={esDiferido(c, etapa)} />)}
                 </div>
               </>
             );
@@ -289,7 +298,7 @@ function Asistente({ def, registro }: { def: DefinicionFormato; registro?: Regis
         </div>
 
         <aside className="no-imprimir hidden xl:flex flex-col gap-3 sticky top-6">
-          <PanelEnVivo desv={desv} faltan={falt.length + faltaEnc.length} />
+          <PanelEnVivo desv={desv} faltan={falt.length + faltaEnc.length} despues={pend.length} />
         </aside>
       </div>
 
@@ -306,8 +315,11 @@ function Asistente({ def, registro }: { def: DefinicionFormato; registro?: Regis
               </span>
             )}
             <span className="text-tinta-suave">
-              {falt.length + faltaEnc.length === 0 ? 'Todo completo' : `Faltan ${falt.length + faltaEnc.length}`}
+              {falt.length + faltaEnc.length === 0 ? (pend.length ? 'Listo para guardar' : 'Todo completo') : `Faltan ${falt.length + faltaEnc.length}`}
             </span>
+            {pend.length > 0 && (
+              <span className="rounded-full bg-dorado-claro px-3 py-1 font-bold text-vino-oscuro">{pend.length} para el día siguiente</span>
+            )}
           </div>
           {actual.id === PASO_RESUMEN ? (
             <Boton tam="lg" variante="primario" icono={Save} onClick={enviar} cargando={guardar.isPending} disabled={!listo || bloqueado}>
@@ -324,7 +336,7 @@ function Asistente({ def, registro }: { def: DefinicionFormato; registro?: Regis
   );
 }
 
-function PanelEnVivo({ desv, faltan }: { desv: Desviacion[]; faltan: number }) {
+function PanelEnVivo({ desv, faltan, despues }: { desv: Desviacion[]; faltan: number; despues: number }) {
   const reales = desv.filter((d) => d.severidad !== 'por-confirmar');
   return (
     <div className="rounded-panel bg-white border border-linea p-5 flex flex-col gap-4">
@@ -338,6 +350,11 @@ function PanelEnVivo({ desv, faltan }: { desv: Desviacion[]; faltan: number }) {
           <p className="text-sm text-tinta-suave">por llenar</p>
         </div>
       </div>
+      {despues > 0 && (
+        <p className="flex items-center gap-2 text-sm text-tinta-suave">
+          <Clock size={16} className="text-dorado" aria-hidden /> {despues} {despues === 1 ? 'dato queda' : 'datos quedan'} para el día siguiente
+        </p>
+      )}
       {desv.length > 0 && (
         <ul className="flex flex-col gap-2">
           {desv.slice(0, 8).map((d, i) => (
@@ -441,8 +458,8 @@ function PasoDatos({ def, enc, cambiar, productos, registroId, loteRepetido }: {
   );
 }
 
-function PasoResumen({ faltaEnc, falt, desv, accion, obs, usuario, setAccion, setObs, irA, irADatos }: {
-  faltaEnc: string[]; falt: { campoId: string; etiqueta: string; etapa: string }[]; desv: Desviacion[];
+function PasoResumen({ faltaEnc, falt, pend, limite, desv, accion, obs, usuario, setAccion, setObs, irA, irADatos }: {
+  faltaEnc: string[]; falt: Faltante[]; pend: Faltante[]; limite: string; desv: Desviacion[];
   accion: string; obs: string; usuario: string; setAccion: (t: string) => void; setObs: (t: string) => void;
   irA: (etapa: string, campoId?: string) => void; irADatos: () => void;
 }) {
@@ -463,6 +480,24 @@ function PasoResumen({ faltaEnc, falt, desv, accion, obs, usuario, setAccion, se
             {falt.map((f) => (
               <li key={f.campoId}>
                 <button type="button" onClick={() => irA(f.etapa, f.campoId)} className="rounded-full bg-white border border-linea px-4 py-2 font-bold hover:border-vino">
+                  {f.etiqueta} <span className="font-normal text-tinta-suave">en {f.etapa}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {pend.length > 0 && (
+        <section className="rounded-panel border-2 border-linea bg-white p-5">
+          <h2 className="text-xl font-bold mb-1 flex items-center gap-2"><Clock size={22} className="text-dorado" aria-hidden /> Se completa al día siguiente</h2>
+          <p className="text-tinta-suave mb-3">
+            Puedes guardar sin estos datos. Se completan desde el registro hasta el {fechaCorta(limite)}, aunque el día ya esté cerrado.
+          </p>
+          <ul className="flex flex-wrap gap-2">
+            {pend.map((f) => (
+              <li key={f.campoId}>
+                <button type="button" onClick={() => irA(f.etapa, f.campoId)} className="rounded-full bg-escarcha border border-linea px-4 py-2 font-bold hover:border-vino">
                   {f.etiqueta} <span className="font-normal text-tinta-suave">en {f.etapa}</span>
                 </button>
               </li>
@@ -549,6 +584,8 @@ function AvisoYaHecho({ def, r, usuario }: { def: DefinicionFormato; r: Registro
       : `${def.nombreCorto} ya se registró este día`;
   const n = r.desviaciones.filter((d) => d.severidad !== 'por-confirmar').length;
   const editable = puedeEditar(r, usuario);
+  const productos = useProductos();
+  const completable = !editable && puedeCompletar(r, usuario) && pendientesDeRegistro(r, productos.data).length > 0;
   return (
     <section className="rounded-panel border-2 border-ok bg-ok-claro/50 px-5 py-4 flex flex-wrap items-center gap-4">
       <span className="size-12 rounded-full bg-ok text-white grid place-items-center shrink-0"><CircleCheck size={24} aria-hidden /></span>
@@ -563,6 +600,9 @@ function AvisoYaHecho({ def, r, usuario }: { def: DefinicionFormato; r: Registro
         <Link to={`/registro/${r.id}`} className="h-12 px-5 rounded-campo border border-linea bg-white font-bold flex items-center gap-2"><Eye size={18} aria-hidden /> Ver</Link>
         {editable && (
           <Link to={`/registro/${r.id}/editar`} className="h-12 px-5 rounded-campo bg-vino text-white font-bold flex items-center gap-2"><Pencil size={18} aria-hidden /> Continuar ese registro</Link>
+        )}
+        {completable && (
+          <Link to={`/registro/${r.id}/completar`} className="h-12 px-5 rounded-campo bg-vino text-white font-bold flex items-center gap-2"><CalendarClock size={18} aria-hidden /> Completar datos del día siguiente</Link>
         )}
       </div>
     </section>

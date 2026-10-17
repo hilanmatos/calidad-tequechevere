@@ -1,4 +1,4 @@
-import { Check, CircleAlert, Eye, Lock, LockOpen, Plus } from 'lucide-react';
+import { CalendarClock, Check, CircleAlert, Clock, Eye, Lock, LockOpen, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSesion } from '../auth/Sesion';
@@ -7,9 +7,11 @@ import { Boton, ChipEstadoRegistro, cx, Dialogo, IconoFormato, MensajeError, Pan
 import { FAMILIAS, formato, formatosDe } from '../formatos';
 import { useCerrarDia, useCierre, useProductos, useReabrirDia, useRegistros } from '../datos/hooks';
 import type { CierreDia, Registro } from '../datos/repositorio';
-import { fechaLarga, hoyPanama, horaLegible, horaPanama, saludo } from '../lib/fechas';
+import { fechaLimite, pendientesDeRegistro, porCompletar, puedeCompletar } from '../lib/dia-siguiente';
+import { fechaCorta, fechaLarga, hoyPanama, horaLegible, horaPanama, saludo } from '../lib/fechas';
 import { estacionesRutina, rutinaDelDia, type PasoRutina } from '../lib/rutina';
-import type { DefinicionFormato } from '../motor/tipos';
+import { DIAS_PARA_COMPLETAR, sumarDias } from '../motor/evaluar';
+import type { DefinicionFormato, Faltante, Producto } from '../motor/tipos';
 
 const reales = (r: Registro) => r.desviaciones.filter((d) => d.severidad !== 'por-confirmar').length;
 const horaDe = (r: Registro) => horaLegible(r.hora ?? horaPanama(new Date(r.creadoEn)));
@@ -25,6 +27,9 @@ export function Hoy() {
   const cerrado = cierre.data ?? null;
   const conAlerta = registros.filter((r) => reales(r) > 0);
   const conPcc = registros.filter((r) => r.tieneDesviacionPcc);
+  // registros de hoy y de los 2 días anteriores con datos del día siguiente por completar
+  const recientes = useRegistros({ desde: sumarDias(hoy, -DIAS_PARA_COMPLETAR), hasta: hoy });
+  const porLlenar = porCompletar(recientes.data ?? [], productos.data ?? [], hoy);
 
   return (
     <div className="flex flex-col gap-8">
@@ -45,7 +50,9 @@ export function Hoy() {
 
       {error ? <MensajeError error={error} /> : null}
 
-      <LineaDeHoy pasos={pasos} registros={registros} cerrado={cerrado} cargando={isLoading} />
+      <LineaDeHoy pasos={pasos} registros={registros} productos={productos.data ?? []} cerrado={cerrado} cargando={isLoading} />
+
+      {porLlenar.length > 0 && <PendientesDiaSiguiente items={porLlenar} productos={productos.data ?? []} hoy={hoy} />}
 
       {FAMILIAS.map((fam) => (
         <section key={fam.id} className="flex flex-col gap-3">
@@ -77,6 +84,11 @@ export function Hoy() {
                       <span className="font-bold">{def?.nombreCorto ?? r.formato}</span>
                       <span className="text-tinta-suave"> {[prod?.nombre, r.area, r.lote && `lote ${r.lote}`].filter(Boolean).join(', ')}</span>
                     </span>
+                    {pendientesDeRegistro(r, productos.data).length > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-dorado-claro px-2.5 py-0.5 text-xs font-bold text-vino-oscuro whitespace-nowrap">
+                        <Clock size={14} aria-hidden /> Día siguiente
+                      </span>
+                    )}
                     <ChipEstadoRegistro desviaciones={reales(r)} pcc={r.tieneDesviacionPcc} />
                   </Link>
                 </li>
@@ -99,7 +111,9 @@ function Cifra({ valor, etiqueta, tono = 'neutro' }: { valor: number; etiqueta: 
 }
 
 /** La rutina diaria dibujada como una línea de producción: cada formato es una estación. */
-function LineaDeHoy({ pasos, registros, cerrado, cargando }: { pasos: PasoRutina[]; registros: Registro[]; cerrado: CierreDia | null; cargando: boolean }) {
+function LineaDeHoy({ pasos, registros, productos, cerrado, cargando }: {
+  pasos: PasoRutina[]; registros: Registro[]; productos: Producto[]; cerrado: CierreDia | null; cargando: boolean;
+}) {
   const { usuario } = useSesion();
   const [confirmar, setConfirmar] = useState(false);
   const reabrir = useReabrirDia();
@@ -186,16 +200,17 @@ function LineaDeHoy({ pasos, registros, cerrado, cargando }: { pasos: PasoRutina
         )}
       </div>
 
-      {confirmar && <ConfirmarCierre pasos={pasos} registros={registros} cerrar={() => setConfirmar(false)} />}
+      {confirmar && <ConfirmarCierre pasos={pasos} registros={registros} productos={productos} cerrar={() => setConfirmar(false)} />}
     </section>
   );
 }
 
-function ConfirmarCierre({ pasos, registros, cerrar }: { pasos: PasoRutina[]; registros: Registro[]; cerrar: () => void }) {
+function ConfirmarCierre({ pasos, registros, productos, cerrar }: { pasos: PasoRutina[]; registros: Registro[]; productos: Producto[]; cerrar: () => void }) {
   const { usuario } = useSesion();
   const cerrarDia = useCerrarDia();
   const avisar = useAvisar();
   const pendientes = pasos.filter((p) => !p.hecho);
+  const diaSiguiente = registros.filter((r) => pendientesDeRegistro(r, productos).length > 0).length;
   const sinAccion = registros.filter((r) => reales(r) > 0 && !r.accionCorrectiva);
   const desviaciones = registros.reduce((n, r) => n + reales(r), 0);
 
@@ -232,7 +247,7 @@ function ConfirmarCierre({ pasos, registros, cerrar }: { pasos: PasoRutina[]; re
       }
     >
       <p className="text-tinta">
-        Al cerrar, los registros de hoy quedan como definitivos: no se pueden agregar ni corregir. Solo un administrador puede reabrir el día.
+        Al cerrar, los registros de hoy quedan como definitivos: no se pueden agregar ni corregir, salvo completar los datos del día siguiente. Solo un administrador puede reabrir el día.
       </p>
       <ul className="flex flex-col gap-2">
         {pasos.map((p) => (
@@ -249,12 +264,57 @@ function ConfirmarCierre({ pasos, registros, cerrar }: { pasos: PasoRutina[]; re
         {registros.length} {registros.length === 1 ? 'registro' : 'registros'} hoy, {desviaciones} {desviaciones === 1 ? 'desviación' : 'desviaciones'}.
         {sinAccion.length > 0 && <strong className="block text-fuera mt-1">{sinAccion.length} con desviaciones sin acción correctiva.</strong>}
       </p>
+      {diaSiguiente > 0 && (
+        <p className="rounded-xl border border-linea px-4 py-3 flex items-start gap-2">
+          <Clock size={20} className="text-dorado shrink-0 mt-0.5" aria-hidden />
+          <span>
+            {diaSiguiente === 1 ? '1 registro queda' : `${diaSiguiente} registros quedan`} con datos del día siguiente. Se completan hasta el{' '}
+            {fechaCorta(fechaLimite(hoyPanama()))}, aunque el día esté cerrado.
+          </span>
+        </p>
+      )}
       {pendientes.length > 0 && (
         <p className="rounded-xl bg-dorado-claro px-4 py-3 font-bold">
           Quedan {pendientes.length} {pendientes.length === 1 ? 'control pendiente' : 'controles pendientes'}. Si cierras ahora, quedarán sin registrar este día.
         </p>
       )}
     </Dialogo>
+  );
+}
+
+/** Congelación y empaque que se miden después: se completan desde aquí hasta 2 días después, aunque el día esté cerrado. */
+function PendientesDiaSiguiente({ items, productos, hoy }: { items: { registro: Registro; pendientes: Faltante[] }[]; productos: Producto[]; hoy: string }) {
+  const { usuario } = useSesion();
+  const cuando = (f: string) => (f === hoy ? 'Hoy' : f === sumarDias(hoy, -1) ? 'Ayer' : fechaCorta(f, false));
+  return (
+    <Panel titulo={<span className="flex items-center gap-2"><Clock size={20} className="text-dorado" aria-hidden /> Pendientes del día siguiente</span>}>
+      <p className="px-5 pt-1 text-tinta-suave">Datos que se miden después de producir. Se completan hasta 2 días después de la fecha del registro, aunque el día esté cerrado.</p>
+      <ul className="divide-y divide-linea px-2 pb-2 pt-1">
+        {items.map(({ registro: r, pendientes }) => {
+          const def = formato(r.formato);
+          const prod = productos.find((p) => p.id === r.productoId);
+          const falta = pendientes.slice(0, 3).map((f) => f.etiqueta).join(', ') + (pendientes.length > 3 ? ` y ${pendientes.length - 3} más` : '');
+          return (
+            <li key={r.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-3">
+              <Link to={`/registro/${r.id}`} className="min-w-0 flex-1 rounded-xl hover:text-vino">
+                <span className="font-bold">{def?.rotulo ? `${def.rotulo} ` : ''}{def?.nombreCorto ?? r.formato}</span>
+                <span className="text-tinta-suave"> {[prod?.nombre, r.lote && `lote ${r.lote}`].filter(Boolean).join(', ')}</span>
+                <span className="block text-sm text-tinta-suave">
+                  <strong className="text-tinta">{cuando(r.fecha)}</strong>, plazo hasta el {fechaCorta(fechaLimite(r.fecha), false)}. Falta: {falta}.
+                </span>
+              </Link>
+              {puedeCompletar(r, usuario, hoy) ? (
+                <Link to={`/registro/${r.id}/completar`} className="h-12 px-5 rounded-campo bg-vino text-white font-bold flex items-center gap-2 shrink-0">
+                  <CalendarClock size={18} aria-hidden /> Completar
+                </Link>
+              ) : (
+                <span className="text-sm text-tinta-suave">Lo completa {r.realizadoPor || 'quien hizo el registro'}</span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </Panel>
   );
 }
 

@@ -1,12 +1,12 @@
 import type { DefinicionFormato } from '../motor/tipos';
 import {
-  ambiente, apariencia, cierreEmpaque, conRelleno, etapaSensorial, metales, num, pct, pesoEmpaqueCampos,
+  ambiente, apariencia, bandejasCongelacion, cierreEmpaque, conRelleno, etapaSensorial, metales, num, pct, pesoEmpaqueCampos,
   pesoRellenoCampo, pesoUnidadCampo, POR_DEFINIR, presentacion, temp, vencimiento,
 } from './comunes';
 
 export const cqL5Yuca: DefinicionFormato = {
   codigo: 'cq-l5-yuca',
-  version: 1,
+  version: 2,
   nombre: 'Control de calidad Línea 5 Yuca Bites y carimañola',
   nombreCorto: 'Yuca Bites y carimañola',
   rotulo: 'L5',
@@ -24,7 +24,9 @@ export const cqL5Yuca: DefinicionFormato = {
         pct('hYuca', 'Humedad de la yuca fresca', { decimales: 2 }),
         num('tiempoCoccion', 'Tiempo de cocción de la yuca', 'min', { decimales: 0 }),
         temp('tCoccion', 'Temperatura de cocción de la yuca'),
-        num('cantidadAgua', 'Cantidad de agua', 'L', { decimales: 1 }),
+        num('alturaAgua', 'Altura del agua de cocción', 'cm', { decimales: 1 }),
+        // Reemplazado por la altura del agua: solo se ve en registros viejos que lo traen.
+        num('cantidadAgua', 'Cantidad de agua', 'L', { decimales: 1, opcional: true, aplica: (c) => c.valores.cantidadAgua != null }),
         temp('tMasa', 'Temperatura de la masa', { opcional: true }),
         ...ambiente.map((c) => ({ ...c, opcional: true })),
         pct('hMasa', 'Humedad de la masa', { decimales: 2 }),
@@ -63,12 +65,14 @@ export const cqL5Yuca: DefinicionFormato = {
     {
       id: 'congelacion', titulo: 'Congelación',
       campos: [
-        temp('tInternaCong', 'Temperatura interna'),
+        // tInternaCong conserva su id para el histórico: antes era "Temperatura interna".
+        ...bandejasCongelacion('tInternaCong'),
         apariencia('aparienciaCong', 'Apariencia'),
       ],
     },
     {
-      id: 'empaque', titulo: 'Empaque',
+      id: 'empaque', titulo: 'Empaque', diferida: true,
+      descripcion: 'Hay referencias que se empacan al día siguiente: puedes guardar sin estos datos y completarlos después.',
       campos: [
         presentacion,
         vencimiento,

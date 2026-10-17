@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { Contexto, DefinicionFormato, Producto } from './tipos';
 import {
+  camposDiferidos,
+  dentroDeVentana,
   desviaciones,
+  esDiferido,
   estadoCampo,
   estadoNumero,
   etapasVisibles,
   faltantes,
+  pendientesDiferidos,
   resumenMuestras,
   sumarDias,
   sumarMeses,
@@ -153,5 +157,62 @@ describe('ausencias', () => {
   it('una persona que no asistió no genera desviaciones aunque tenga celdas marcadas', () => {
     const d = desviaciones(def, ctx({ tMasa: 25, apariencia: 'Conforme', higiene: { o1: { _ausente: 'si', mascarilla: 'falla' } } }, crudo));
     expect(d).toEqual([]);
+  });
+});
+
+describe('campos del día siguiente', () => {
+  // Congelación se mide al día siguiente (etapa diferida); en Masa, solo la nota del día siguiente es diferida.
+  const conDiferidos: DefinicionFormato = {
+    ...def,
+    etapas: [
+      {
+        ...def.etapas[0],
+        campos: [...def.etapas[0].campos, { id: 'tReposo', etiqueta: 'Temperatura de reposo', tipo: 'numero', unidad: '°C', diferido: true }],
+      },
+      {
+        id: 'congelacion', titulo: 'Congelación', diferida: true,
+        campos: [
+          { id: 'tCong', etiqueta: 'Temperatura de congelación', tipo: 'numero', unidad: '°C', pcc: 'PCC2', limite: { max: -18 } },
+          { id: 'tRelleno', etiqueta: 'Temperatura del relleno', tipo: 'numero', unidad: '°C', aplica: (c) => !!c.producto?.esPrecocido },
+          { id: 'notaCong', etiqueta: 'Nota', tipo: 'texto', opcional: true },
+          { id: 'difCong', etiqueta: 'Diferencia', tipo: 'calculado', unidad: '°C', formula: (c) => (typeof c.valores.tCong === 'number' ? c.valores.tCong + 18 : undefined) },
+        ],
+      },
+    ],
+  };
+
+  it('reconoce los campos diferidos por etapa o por campo', () => {
+    const [masa, cong] = conDiferidos.etapas;
+    expect(esDiferido(masa.campos.find((c) => c.id === 'tReposo')!, masa)).toBe(true);
+    expect(esDiferido(masa.campos.find((c) => c.id === 'tMasa')!, masa)).toBe(false);
+    expect(esDiferido(cong.campos[0], cong)).toBe(true);
+  });
+
+  it('lista todos los diferidos del formato, incluidos calculados y opcionales', () => {
+    expect(camposDiferidos(conDiferidos).sort()).toEqual(['difCong', 'notaCong', 'tCong', 'tRelleno', 'tReposo']);
+    expect(camposDiferidos(def)).toEqual([]);
+  });
+
+  it('los diferidos vacíos no bloquean el guardado', () => {
+    const f = faltantes(conDiferidos, ctx({ tMasa: 25 }, precocido)).map((x) => x.campoId);
+    expect(f).toEqual(['apariencia']);
+  });
+
+  it('pendientesDiferidos lista los diferidos visibles, obligatorios y vacíos', () => {
+    expect(pendientesDiferidos(conDiferidos, ctx({}, precocido))).toEqual([
+      { campoId: 'tReposo', etiqueta: 'Temperatura de reposo', etapa: 'Masa' },
+      { campoId: 'tCong', etiqueta: 'Temperatura de congelación', etapa: 'Congelación' },
+      { campoId: 'tRelleno', etiqueta: 'Temperatura del relleno', etapa: 'Congelación' },
+    ]);
+    // ocultos (no aplica al producto) y ya medidos no quedan pendientes
+    expect(pendientesDiferidos(conDiferidos, ctx({ tCong: -20 }, crudo)).map((x) => x.campoId)).toEqual(['tReposo']);
+    expect(pendientesDiferidos(def, ctx({}, precocido))).toEqual([]);
+  });
+
+  it('la ventana para completar es de 2 días después de la fecha del registro', () => {
+    expect(dentroDeVentana('2026-10-15', '2026-10-17')).toBe(true);
+    expect(dentroDeVentana('2026-10-17', '2026-10-17')).toBe(true);
+    expect(dentroDeVentana('2026-10-14', '2026-10-17')).toBe(false);
+    expect(dentroDeVentana('2026-09-30', '2026-10-02')).toBe(true);
   });
 });

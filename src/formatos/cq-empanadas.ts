@@ -26,7 +26,8 @@ function etapasEmpanadas(maiz: boolean): Etapa[] {
       ],
     },
     {
-      id: 'congelacion', titulo: 'Congelación',
+      id: 'congelacion', titulo: 'Congelación', diferida: true,
+      descripcion: 'Se mide al día siguiente: puedes guardar sin estos datos y completarlos desde el registro.',
       campos: [
         temp('tRelleno', 'Temperatura del relleno', { aplica: conRelleno }),
         temp('tInternaCong', 'Temperatura interna', { pcc: 'PCC1', limite: POR_DEFINIR }),
@@ -34,10 +35,12 @@ function etapasEmpanadas(maiz: boolean): Etapa[] {
       ],
     },
     {
-      id: 'empaque', titulo: 'Empaque',
+      id: 'empaque', titulo: 'Empaque', diferida: true,
+      descripcion: 'Se empaca al día siguiente: puedes guardar sin estos datos y completarlos desde el registro.',
       campos: [
         presentacion,
         vencimiento,
+        temp('tFinalEmpaque', 'Temperatura final de empaque', { ayuda: 'La que alcanza al día siguiente en el cuarto de congelación.' }),
         ...pesoEmpaqueCampos,
         ...(maiz ? [apariencia('aparienciaEmpaque', 'Apariencia del empaque', { pcc: 'PCC2' })] : []),
         metales(maiz ? 'PCC3' : 'PCC2'),
@@ -49,7 +52,7 @@ function etapasEmpanadas(maiz: boolean): Etapa[] {
 
 export const cqL2EmpanadasTrigo: DefinicionFormato = {
   codigo: 'cq-l2-empanadas-trigo',
-  version: 1,
+  version: 2,
   nombre: 'Control de calidad Línea 2 Empanadas de trigo, discos y pastelitos',
   nombreCorto: 'Empanadas de trigo, discos y pastelitos',
   rotulo: 'L2',
@@ -65,7 +68,7 @@ export const cqL2EmpanadasTrigo: DefinicionFormato = {
 
 export const cqL3EmpanadasMaiz: DefinicionFormato = {
   codigo: 'cq-l3-empanadas-maiz',
-  version: 1,
+  version: 2,
   nombre: 'Control de calidad Línea 3 Empanadas de maíz',
   nombreCorto: 'Empanadas de maíz',
   rotulo: 'L3',

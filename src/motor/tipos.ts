@@ -1,4 +1,4 @@
-export type Unidad = '°C' | '%' | 'g' | 'kg' | 'min' | 's' | 'mL/L' | 'pH' | 'L' | 'uds' | '';
+export type Unidad = '°C' | '%' | 'g' | 'kg' | 'min' | 's' | 'mL/L' | 'pH' | 'L' | 'cm' | 'uds' | '';
 
 export interface Limite {
   min?: number;
@@ -19,10 +19,15 @@ export interface Producto {
   pesoUnidadMinG?: number;
   pesoUnidadMaxG?: number;
   pesoRellenoG?: number;
+  /** Rango del relleno por pieza (SQF). Sin rango, el peso del relleno se registra sin límite. */
+  pesoRellenoMinG?: number;
+  pesoRellenoMaxG?: number;
   pesoDeclaradoKg?: number;
   vidaUtilMeses?: number;
   llevaRelleno: boolean;
   esPrecocido: boolean;
+  /** Pasa por congelación en la línea (las boquitas no). Si falta, se asume que sí. */
+  llevaCongelacion?: boolean;
   activo: boolean;
 }
 
@@ -52,6 +57,8 @@ interface CampoBase {
   /** Etiqueta del punto crítico de control, ej. 'PCC1'. */
   pcc?: string;
   opcional?: boolean;
+  /** Se mide al día siguiente: no bloquea el guardado y se completa después, aunque el día esté cerrado. */
+  diferido?: boolean;
   aplica?: (ctx: Contexto) => boolean;
 }
 
@@ -180,6 +187,8 @@ export interface Etapa {
   descripcion?: string;
   campos: Campo[];
   aplica?: (ctx: Contexto) => boolean;
+  /** Todos sus campos se miden al día siguiente (ver CampoBase.diferido). */
+  diferida?: boolean;
 }
 
 export type Familia = 'linea' | 'peso' | 'personal' | 'almacenamiento';

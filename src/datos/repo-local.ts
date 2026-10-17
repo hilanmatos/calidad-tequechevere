@@ -1,9 +1,11 @@
 import { hoyPanama } from '../lib/fechas';
 import type { Operario, Producto } from '../motor/tipos';
+import { aplicarCompletar, validarCompletar } from './completar';
 import { generarDemo } from './demo';
 import { DiaCerrado, RegistroDuplicado, type CambioRegistro, type CierreDia, type Perfil, type Registro, type Repositorio, type Usuario } from './repositorio';
 
-const CLAVE = 'calidad-chevere-demo-v2';
+// v3: formatos con datos del día siguiente, bandejas y rangos de relleno
+const CLAVE = 'calidad-chevere-demo-v3';
 const CLAVE_SESION = 'calidad-chevere-demo-sesion';
 
 interface Almacen {
@@ -117,6 +119,18 @@ export function repoLocal(): Repositorio {
       }
       const nuevo: Registro = { ...r, id: crypto.randomUUID(), origen: 'app', creadoPor: 'demo', creadoEn: ahora };
       a.registros.push(nuevo);
+      guardar(a);
+      return nuevo;
+    },
+    async completarRegistro(id, datos, desviaciones, tieneDesviacionPcc, accionCorrectiva) {
+      await pausa();
+      // mismas reglas que completar_registro en Supabase; no mira el cierre del día ni la clave única
+      const previo = a.registros.find((x) => x.id === id);
+      const completado = { datos, desviaciones, tieneDesviacionPcc, accionCorrectiva };
+      validarCompletar(previo, completado, USUARIO_DEMO, hoyPanama());
+      const nuevo = aplicarCompletar(previo, completado, new Date().toISOString());
+      a.historial.push({ id: a.historial.length + 1, accion: 'UPDATE', usuario: USUARIO_DEMO.nombre, en: nuevo.actualizadoEn!, antes: previo, despues: nuevo });
+      reemplazar(a.registros, nuevo);
       guardar(a);
       return nuevo;
     },

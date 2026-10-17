@@ -1,12 +1,12 @@
 import type { DefinicionFormato } from '../motor/tipos';
 import {
-  ambiente, apariencia, cierreEmpaque, etapaSensorial, metales, num, opcion, pct, pesoEmpaqueCampos,
+  ambiente, apariencia, bandejasCongelacion, cierreEmpaque, conforme, etapaSensorial, metales, num, opcion, pct, pesoEmpaqueCampos,
   pesoRellenoCampo, pesoUnidadCampo, POR_DEFINIR, presentacion, temp, tempAgua, vencimiento,
 } from './comunes';
 
 export const cqL1Tequenos: DefinicionFormato = {
   codigo: 'cq-l1-tequenos',
-  version: 1,
+  version: 2,
   nombre: 'Control de calidad Línea 1 Tequeños',
   nombreCorto: 'Tequeños',
   rotulo: 'L1',
@@ -26,6 +26,9 @@ export const cqL1Tequenos: DefinicionFormato = {
         temp('tMasa', 'Temperatura de la masa'),
         pct('hMasa', 'Humedad de la masa', { decimales: 2 }),
         { id: 'proveedorQueso', etiqueta: 'Proveedor del queso', tipo: 'texto', opcional: true },
+        { id: 'loteQueso', etiqueta: 'Lote del queso', tipo: 'texto' },
+        conforme('quesoConforme', 'Queso conforme', { opciones: ['Conforme', 'No conforme'] }),
+        { id: 'comentarioQueso', etiqueta: 'Comentario sobre el queso', tipo: 'texto', opcional: true },
         pct('hQueso', 'Humedad del queso', { decimales: 2, opcional: true }),
         temp('tQueso', 'Temperatura del queso', { opcional: true, ayuda: 'Anótala cuando se mida; ayuda a explicar variaciones de la masa.' }),
         apariencia('aparienciaMasa'),
@@ -37,7 +40,7 @@ export const cqL1Tequenos: DefinicionFormato = {
         num('vueltas', 'Vueltas de masa', 'uds', { decimales: 0 }),
         apariencia('aparienciaEnrollado'),
         pesoUnidadCampo(),
-        pesoRellenoCampo({ opcional: true }),
+        pesoRellenoCampo(),
       ],
     },
     {
@@ -58,13 +61,18 @@ export const cqL1Tequenos: DefinicionFormato = {
     },
     {
       id: 'congelacion', titulo: 'Congelación',
+      // Las boquitas no pasan por congelación; los registros viejos que ya la tienen la siguen mostrando.
+      aplica: (c) => c.producto?.llevaCongelacion !== false || c.valores.tInicialCong != null || c.valores.aparienciaCong != null,
       campos: [
-        temp('tInicialCong', 'Temperatura inicial del producto', { pcc: 'PCC2', limite: POR_DEFINIR }),
+        // tInicialCong conserva su id para el histórico: antes era "Temperatura inicial del producto".
+        ...bandejasCongelacion('tInicialCong', { pcc: 'PCC2', limite: POR_DEFINIR }),
+        num('bandejasCiclo', 'Número de bandejas por ciclo', 'uds', { decimales: 0 }),
         apariencia('aparienciaCong', 'Apariencia'),
       ],
     },
     {
-      id: 'empaque', titulo: 'Empaque',
+      id: 'empaque', titulo: 'Empaque', diferida: true,
+      descripcion: 'Hay referencias que se empacan al día siguiente: puedes guardar sin estos datos y completarlos después.',
       campos: [
         presentacion,
         vencimiento,
