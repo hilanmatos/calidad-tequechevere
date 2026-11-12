@@ -122,6 +122,13 @@ def test_leer_fila_avisa_si_marcaron_c_y_nc():
     ('Empanadita maiz queso', EM, 'PE006'),
     ('Yuca bites pollo', GF, 'Yuca Bite de Pollo'),
     ('Mini carimañola', GF, 'Mini Carimañola'),
+    # productos nuevos del 12/11/2026 (caja transparente y presentaciones separadas)
+    ('Full queso x50', TQ, 'Tequeño Full Queso x50'),
+    ('Boquita x12', TQ, 'Tequeño Boquita x12'),
+    ('Premium guayaba', TQ, 'Tequeño Premium de Guayaba'),
+    ('Full mantequilla', TQ, 'Tequeño Full de Mantequilla'),
+    ('Almond bites queso', GF, 'Almond Bite de Queso'),
+    ('Almond queso x50', GF, 'Almond Bite de Queso x50'),
 ])
 def test_producto_catalogo_reconoce(texto, lineas, esperado):
     assert producto_catalogo(texto, lineas) == esperado

@@ -3,10 +3,11 @@ import type { Operario, Producto } from '../motor/tipos';
 type SinId<T> = Omit<T, 'id'>;
 
 const p = (x: Partial<Producto> & Pick<Producto, 'codigo' | 'nombre' | 'linea' | 'presentacion'>): SinId<Producto> => ({
-  llevaRelleno: true, esPrecocido: false, llevaCongelacion: true, activo: true, vidaUtilMeses: 6, ...x,
+  llevaRelleno: true, esPrecocido: false, llevaCongelacion: true, cajaTransparente: false, activo: true, vidaUtilMeses: 6, ...x,
 });
 
-/** Productos de ejemplo para el modo demo. Los pesos son ilustrativos; los rangos de relleno de L1 siguen el SQF. */
+/** Productos de ejemplo para el modo demo. Los pesos son ilustrativos; los rangos de relleno de L1 siguen el SQF.
+ *  Los de caja transparente solo llevan la temperatura superficial. */
 export const PRODUCTOS_DEMO: SinId<Producto>[] = [
   p({ codigo: 'PT011', nombre: 'Tequeño full queso', linea: 'cq-l1-tequenos', presentacion: '12 unidades', pesoUnidadG: 37, pesoUnidadMinG: 35, pesoUnidadMaxG: 39, pesoRellenoG: 17, pesoRellenoMinG: 16, pesoRellenoMaxG: 18, pesoDeclaradoKg: 0.444 }),
   p({ codigo: 'PT013', nombre: 'Tequeño full queso precocido', linea: 'cq-l1-tequenos', presentacion: '20 unidades', pesoUnidadG: 38, pesoUnidadMinG: 36, pesoUnidadMaxG: 40, pesoRellenoG: 17, pesoRellenoMinG: 16, pesoRellenoMaxG: 18, pesoDeclaradoKg: 0.76, esPrecocido: true }),
@@ -23,6 +24,9 @@ export const PRODUCTOS_DEMO: SinId<Producto>[] = [
   p({ codigo: 'PY001', nombre: 'Yuca Bites de queso blanco', linea: 'cq-l5-yuca', presentacion: '16 unidades', pesoUnidadG: 27, pesoUnidadMinG: 26, pesoUnidadMaxG: 29, pesoRellenoG: 7, pesoDeclaradoKg: 0.44, esPrecocido: true }),
   p({ codigo: 'PY007', nombre: 'Yuky snack de queso blanco', linea: 'cq-l5-yuca', presentacion: '32 unidades', pesoUnidadG: 27, pesoUnidadMinG: 26, pesoUnidadMaxG: 29, pesoRellenoG: 7, pesoDeclaradoKg: 0.87, esPrecocido: true }),
   p({ codigo: 'PS001', nombre: 'Salsa tártara', linea: 'cq-salsa-tartara', presentacion: 'Envase de 600 g', pesoDeclaradoKg: 0.6, llevaRelleno: false }),
+  // al final para no cambiar los ids (prod-N) de los demás productos del demo
+  p({ codigo: '', nombre: 'Tequeño full queso x50', linea: 'cq-l1-tequenos', presentacion: 'x50 · caja transparente', pesoUnidadG: 37, pesoUnidadMinG: 36, pesoUnidadMaxG: 38, pesoRellenoG: 17, pesoRellenoMinG: 16, pesoRellenoMaxG: 18, pesoDeclaradoKg: 1.85, cajaTransparente: true }),
+  p({ codigo: '', nombre: 'Almond Bites con queso x50', linea: 'cq-l4-almond', presentacion: 'x50 · caja transparente', pesoUnidadG: 16, pesoUnidadMinG: 15, pesoUnidadMaxG: 18, pesoRellenoG: 4, pesoDeclaradoKg: 0.8, cajaTransparente: true }),
 ];
 
 /** Nombres ficticios: los operarios reales viven solo en Supabase. */

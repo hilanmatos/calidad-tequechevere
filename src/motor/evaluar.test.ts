@@ -86,6 +86,15 @@ describe('visibilidad', () => {
     expect(etapasVisibles(def, ctx({}, precocido)).map((e) => e.id)).toEqual(['masa', 'freido', 'personal']);
   });
 
+  it('oculta la etapa que aplica pero se queda sin campos visibles', () => {
+    const conCampoOculto: DefinicionFormato = {
+      ...def,
+      etapas: [def.etapas[0], { id: 'vacia', titulo: 'Vacía', campos: [{ id: 'x', etiqueta: 'X', tipo: 'texto', aplica: () => false }] }],
+    };
+    expect(etapasVisibles(conCampoOculto, ctx({}, crudo)).map((e) => e.id)).toEqual(['masa']);
+    expect(faltantes(conCampoOculto, ctx({}, crudo)).map((x) => x.etapa)).not.toContain('Vacía');
+  });
+
   it('no exige campos ocultos ni opcionales', () => {
     const f = faltantes(def, ctx({ tMasa: 25 }, crudo)).map((x) => x.campoId);
     expect(f).toEqual(['apariencia']);

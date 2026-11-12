@@ -21,6 +21,7 @@ const aProducto = (f: Fila): Producto => ({
   llevaRelleno: f.lleva_relleno,
   esPrecocido: f.es_precocido,
   llevaCongelacion: f.lleva_congelacion ?? true,
+  cajaTransparente: f.caja_transparente ?? false,
   activo: f.activo,
 });
 
@@ -41,6 +42,7 @@ const deProducto = (p: Producto): Fila => ({
   lleva_relleno: p.llevaRelleno,
   es_precocido: p.esPrecocido,
   lleva_congelacion: p.llevaCongelacion !== false,
+  caja_transparente: p.cajaTransparente === true,
   activo: p.activo,
 });
 

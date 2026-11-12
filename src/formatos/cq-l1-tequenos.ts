@@ -1,14 +1,15 @@
 import type { Contexto, DefinicionFormato } from '../motor/tipos';
 import {
   ambiente, apariencia, bandejasCongelacion, cierreEmpaque, conforme, etapaSensorial, metales, num, opcion, pct, pesoEmpaqueCampos,
-  pesoRellenoCampo, pesoUnidadCampo, POR_DEFINIR, presentacion, temp, tempAgua, vencimiento,
+  pesoRellenoCampo, pesoUnidadCampo, POR_DEFINIR, presentacion, salvoCajaTransparente, temp, tempAgua, tempSuperficial, vencimiento,
 } from './comunes';
 
 const llevaCongelacion = (c: Contexto) => c.producto?.llevaCongelacion !== false;
 
 export const cqL1Tequenos: DefinicionFormato = {
   codigo: 'cq-l1-tequenos',
-  version: 2,
+  // v3: productos en caja transparente (solo temperatura superficial)
+  version: 3,
   nombre: 'Control de calidad Línea 1 Tequeños',
   nombreCorto: 'Tequeños',
   rotulo: 'L1',
@@ -48,7 +49,8 @@ export const cqL1Tequenos: DefinicionFormato = {
     {
       id: 'turbo', titulo: 'Enfriamiento en turbo',
       descripcion: 'El turbo enfría; la congelación ocurre en el cuarto.',
-      campos: [temp('tInternaTurbo', 'Temperatura interna', { opcional: true })],
+      // en caja transparente no se toma: la etapa no aparece
+      campos: [salvoCajaTransparente(temp('tInternaTurbo', 'Temperatura interna', { opcional: true }))],
     },
     {
       id: 'freido', titulo: 'Freído', descripcion: 'Solo productos precocidos.',
@@ -56,7 +58,7 @@ export const cqL1Tequenos: DefinicionFormato = {
       campos: [
         temp('tAceite', 'Temperatura del aceite'),
         num('tiempoFreido', 'Tiempo de freído', 's', { decimales: 0 }),
-        temp('tInternaFreido', 'Temperatura interna', { pcc: 'PCC1', limite: POR_DEFINIR }),
+        salvoCajaTransparente(temp('tInternaFreido', 'Temperatura interna', { pcc: 'PCC1', limite: POR_DEFINIR })),
         opcion('aspectoFreido', 'Aspecto general', ['Excelente', 'Buena', 'Regular', 'Mala'], ['Mala']),
         num('defectos', 'Tequeños con defecto', 'uds', { decimales: 0 }),
       ],
@@ -68,8 +70,10 @@ export const cqL1Tequenos: DefinicionFormato = {
       campos: [
         // tInicialCong conserva su id para el histórico: antes era "Temperatura inicial del producto". Los campos
         // nuevos no se piden en productos sin congelación (un registro viejo de boquita solo muestra lo que tenía).
+        // En caja transparente no van las temperaturas de las bandejas, ni sus horas ni el tiempo entre ellas.
         ...bandejasCongelacion('tInicialCong', { pcc: 'PCC2', limite: POR_DEFINIR })
-          .map((campo) => (campo.id === 'tInicialCong' ? campo : { ...campo, aplica: llevaCongelacion })),
+          .map((campo) => (campo.id === 'tInicialCong' ? campo : { ...campo, aplica: llevaCongelacion }))
+          .map((campo) => salvoCajaTransparente(campo)),
         num('bandejasCiclo', 'Número de bandejas por ciclo', 'uds', { decimales: 0, aplica: llevaCongelacion }),
         apariencia('aparienciaCong', 'Apariencia'),
       ],
@@ -80,7 +84,8 @@ export const cqL1Tequenos: DefinicionFormato = {
       campos: [
         presentacion,
         vencimiento,
-        temp('tFinal', 'Temperatura final del producto', { pcc: 'PCC3', limite: POR_DEFINIR }),
+        salvoCajaTransparente(temp('tFinal', 'Temperatura final del producto', { pcc: 'PCC3', limite: POR_DEFINIR })),
+        tempSuperficial('PCC3'),
         ...pesoEmpaqueCampos,
         metales('PCC4'),
         temp('tSellado', 'Temperatura de sellado', { opcional: true }),

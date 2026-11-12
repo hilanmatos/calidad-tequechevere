@@ -1,20 +1,26 @@
-"""Catálogo de productos cargado en Supabase (12/10/2026, especificaciones SQF vigentes).
+"""Catálogo de productos cargado en Supabase (12/10/2026, especificaciones SQF vigentes; presentaciones y productos
+nuevos de caja transparente del 12/11/2026, migración 20261112000000_caja_transparente.sql).
 
 Para el campo `producto` de un registro: usar el código si tiene; si no, el nombre exacto."""
 
 PRODUCTOS = [
-    ('cq-l1-tequenos', '', 'Tequeño Full Queso', 'Full 12 y 50'),
+    ('cq-l1-tequenos', '', 'Tequeño Full Queso', 'Full 12'),
+    ('cq-l1-tequenos', '', 'Tequeño Full Queso x50', 'x50 · caja transparente'),
     ('cq-l1-tequenos', '', 'Tequeño Full Queso precocido', 'Full 20 y 24'),
+    ('cq-l1-tequenos', '', 'Tequeño Full de Mantequilla', ''),
     ('cq-l1-tequenos', '', 'Tequeño Chela', 'Chela 50'),
     ('cq-l1-tequenos', '', 'Tequeño Full de Guayaba (5 cm)', 'Bolsa de 10 y Guayaba 40'),
     ('cq-l1-tequenos', '', 'Tequeño de Chocolate', 'Bolsa de 10 y Chocolate 50'),
     ('cq-l1-tequenos', 'PT035', 'Tequeños Salmón con Queso Crema', '10 unidades'),
     ('cq-l1-tequenos', 'PT036', 'Tequeños Salmón con Queso Crema', '50 unidades'),
     ('cq-l1-tequenos', 'PT039', 'Tequeños Salmón con Queso Crema', '40 unidades'),
-    ('cq-l1-tequenos', '', 'Tequeño Boquita', 'Boquita 60 y 48'),
-    ('cq-l1-tequenos', '', 'Tequeño Premium', 'Caja plástica 10 × 3'),
+    ('cq-l1-tequenos', '', 'Tequeño Boquita', 'x60 y x48 · caja transparente'),
+    ('cq-l1-tequenos', '', 'Tequeño Boquita x12', 'x12'),
+    ('cq-l1-tequenos', '', 'Tequeño Premium', 'x30 · caja transparente'),
+    ('cq-l1-tequenos', '', 'Tequeño Premium de Guayaba', 'x30 · caja transparente'),
+    ('cq-l1-tequenos', '', 'Tequeño Premium de Chocolate', 'x30 · caja transparente'),
     ('cq-l1-tequenos', '', 'Tequeñón', 'Caja blanca de 50'),
-    ('cq-l1-tequenos', '', 'Tequeño Salchi Queso', '10 × 3'),
+    ('cq-l1-tequenos', '', 'Tequeño Salchi Queso', '10 × 3 · caja transparente'),
     ('cq-l1-tequenos', '', 'Tequeño Zaatar', '16 × 3'),
     ('cq-l2-empanadas-trigo', 'PP001', 'Pastelito de Queso', '30 unidades'),
     ('cq-l2-empanadas-trigo', 'PP002', 'Pastelito de Carne', '30 unidades'),
@@ -36,8 +42,10 @@ PRODUCTOS = [
     ('cq-l3-empanadas-maiz', 'PE011', 'Empanada de Maíz de Pollo', '12 unidades'),
     ('cq-l3-empanadas-maiz', 'PE013', 'Empanadita de Yuca de Pollo', '30 unidades'),
     ('cq-l3-empanadas-maiz', 'PE014', 'Empanadita de Yuca de Carne', '30 unidades'),
-    ('cq-l4-almond', '', 'Almond Bite de Queso', 'x20 y x50'),
-    ('cq-l4-almond', '', 'Almond Bite de Chocolate', 'x20 y x50'),
+    ('cq-l4-almond', '', 'Almond Bite de Queso', 'x20'),
+    ('cq-l4-almond', '', 'Almond Bite de Queso x50', 'x50 · caja transparente'),
+    ('cq-l4-almond', '', 'Almond Bite de Chocolate', 'x20'),
+    ('cq-l4-almond', '', 'Almond Bite de Chocolate x50', 'x50 · caja transparente'),
     ('cq-l5-yuca', '', 'Yuca Bite de Queso', 'x16, x32 y x50'),
     ('cq-l5-yuca', '', 'Yuca Bite de Pollo', 'x16, x32 y x50'),
     ('cq-l5-yuca', '', 'Yuca Bite de Carne', 'x16 y x50'),

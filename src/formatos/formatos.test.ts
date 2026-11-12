@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { camposDiferidos, desviaciones, estadoCampo, etapasVisibles, faltantes, pendientesDiferidos } from '../motor/evaluar';
+import {
+  camposDiferidos, camposVisibles, desviaciones, esDiferido, estadoCampo, etapasVisibles, faltantes, pendientesDiferidos,
+} from '../motor/evaluar';
 import type { Campo, Contexto, DefinicionFormato, Producto } from '../motor/tipos';
-import { minutosEntre } from './comunes';
+import { minutosEntre, POR_DEFINIR } from './comunes';
 import { FORMATOS, formato } from './index';
 
 const campoDe = (def: DefinicionFormato, id: string): Campo => def.etapas.flatMap((e) => e.campos).find((c) => c.id === id)!;
@@ -199,8 +201,12 @@ describe('formatos de línea con empaque al día siguiente', () => {
   });
 
   it('suben de versión los formatos que cambiaron', () => {
-    for (const codigo of ['cq-l1-tequenos', 'cq-l2-empanadas-trigo', 'cq-l3-empanadas-maiz', 'cq-l4-almond', 'cq-l5-yuca']) {
+    for (const codigo of ['cq-l2-empanadas-trigo', 'cq-l3-empanadas-maiz', 'cq-l5-yuca']) {
       expect(formato(codigo)!.version, codigo).toBe(2);
+    }
+    // v3: productos en caja transparente
+    for (const codigo of ['cq-l1-tequenos', 'cq-l4-almond']) {
+      expect(formato(codigo)!.version, codigo).toBe(3);
     }
   });
 });
@@ -222,5 +228,132 @@ describe('última bandeja de congelación', () => {
       expect(diferidos).toEqual(expect.arrayContaining(['tUltimaBandeja', 'horaUltimaBandeja', 'tiempoEntreBandejas']));
       expect(diferidos).not.toContain('horaPrimeraBandeja');
     }
+  });
+});
+
+describe('productos en caja transparente', () => {
+  // Operaciones: en caja transparente no se toman temperaturas internas, solo la superficial, al día siguiente en el empaque
+  const enCaja = (linea: string, extra: Partial<Producto> = {}): Producto => ({
+    ...tequeno(false), linea, nombre: 'Producto x50', presentacion: 'x50 · caja transparente', cajaTransparente: true, ...extra,
+  });
+  const normal = (linea: string, extra: Partial<Producto> = {}): Producto => ({ ...tequeno(false), linea, ...extra });
+  const ctx = (producto: Producto, valores: Contexto['valores'] = {}): Contexto => ({ valores, producto, fecha: '2026-11-12' });
+  const visibles = (def: DefinicionFormato, c: Contexto) => etapasVisibles(def, c).flatMap((e) => camposVisibles(e, c).map((x) => x.id));
+  const etapas = (def: DefinicionFormato, c: Contexto) => etapasVisibles(def, c).map((e) => e.id);
+  const pedidos = (def: DefinicionFormato, c: Contexto) => [...faltantes(def, c), ...pendientesDiferidos(def, c)].map((x) => x.campoId);
+
+  describe('cq-l1-tequenos', () => {
+    const def = formato('cq-l1-tequenos')!;
+    const internas = [
+      'tInternaTurbo', 'tInternaFreido', 'tInicialCong', 'horaPrimeraBandeja', 'tUltimaBandeja', 'horaUltimaBandeja', 'tiempoEntreBandejas', 'tFinal',
+    ];
+
+    it('no pide temperaturas internas, ni sus horas ni el tiempo entre bandejas; lo demás sigue igual', () => {
+      // precocido para que también aparezca el freído
+      const c = ctx(enCaja('cq-l1-tequenos', { esPrecocido: true }));
+      const ids = visibles(def, c);
+      for (const id of internas) {
+        expect(ids, id).not.toContain(id);
+        expect(pedidos(def, c), id).not.toContain(id);
+      }
+      expect(ids).toEqual(expect.arrayContaining([
+        'aparienciaEnrollado', 'pesoPromedio', 'tAceite', 'aspectoFreido', 'bandejasCiclo', 'aparienciaCong', 'pesoEmpaque', 'metales',
+      ]));
+    });
+
+    it('la etapa del turbo queda sin campos y no aparece como paso vacío', () => {
+      const c = ctx(enCaja('cq-l1-tequenos'));
+      expect(etapas(def, c)).not.toContain('turbo');
+      // la congelación sigue por las bandejas por ciclo y la apariencia
+      expect(etapas(def, c)).toContain('congelacion');
+      expect(etapas(def, ctx(normal('cq-l1-tequenos')))).toContain('turbo');
+    });
+
+    it('pide la temperatura superficial como dato del día siguiente', () => {
+      const c = ctx(enCaja('cq-l1-tequenos'));
+      expect(faltantes(def, c).map((x) => x.campoId)).not.toContain('tSuperficial');
+      expect(pendientesDiferidos(def, c).map((x) => x.campoId)).toContain('tSuperficial');
+      expect(camposDiferidos(def)).toContain('tSuperficial');
+      const campo = campoDe(def, 'tSuperficial');
+      const empaque = def.etapas.find((e) => e.id === 'empaque')!;
+      expect(empaque.campos).toContain(campo);
+      expect(esDiferido(campo, empaque)).toBe(true);
+      expect(campo.etiqueta).toBe('Temperatura superficial');
+      expect(campo.ayuda).toBe('Se toma al día siguiente, en la superficie del producto empacado');
+      expect(campo.pcc).toBe('PCC3');
+      expect(campo.pcc).toBe(campoDe(def, 'tFinal').pcc);
+      expect(campo.tipo === 'numero' && campo.unidad).toBe('°C');
+      expect(campo.tipo === 'numero' && campo.limite).toEqual(POR_DEFINIR);
+    });
+
+    it('con un producto normal todo sigue igual', () => {
+      const c = ctx(normal('cq-l1-tequenos'));
+      const ids = visibles(def, c);
+      expect(ids).not.toContain('tSuperficial');
+      for (const id of ['tInternaTurbo', 'tInicialCong', 'horaPrimeraBandeja', 'tUltimaBandeja', 'horaUltimaBandeja', 'tiempoEntreBandejas', 'tFinal']) {
+        expect(ids, id).toContain(id);
+      }
+      expect(faltantes(def, c).map((x) => x.campoId)).toContain('tInicialCong');
+      expect(pendientesDiferidos(def, c).map((x) => x.campoId)).toEqual(expect.arrayContaining(['tUltimaBandeja', 'tFinal']));
+      expect(pendientesDiferidos(def, c).map((x) => x.campoId)).not.toContain('tSuperficial');
+      expect(visibles(def, ctx(normal('cq-l1-tequenos', { esPrecocido: true })))).toContain('tInternaFreido');
+    });
+
+    it('un registro viejo que ya tiene temperaturas internas las sigue mostrando', () => {
+      const c = ctx(enCaja('cq-l1-tequenos'), { tInicialCong: 6, tFinal: -8 });
+      const ids = visibles(def, c);
+      expect(ids).toContain('tInicialCong');
+      expect(ids).toContain('tFinal');
+      // solo lo que ya tenía: no pide las demás temperaturas internas
+      expect(pedidos(def, c)).not.toContain('horaPrimeraBandeja');
+      expect(pedidos(def, c)).not.toContain('tUltimaBandeja');
+      // ya midió la temperatura final interna: no se le pide además la superficial
+      expect(ids).not.toContain('tSuperficial');
+    });
+
+    it('una temperatura superficial ya registrada se sigue mostrando aunque el producto deje de ir en caja', () => {
+      expect(visibles(def, ctx(normal('cq-l1-tequenos'), { tSuperficial: -12 }))).toContain('tSuperficial');
+    });
+  });
+
+  describe('cq-l4-almond', () => {
+    const def = formato('cq-l4-almond')!;
+
+    it('no pide temperaturas internas; la congelación sigue con la apariencia', () => {
+      const c = ctx(enCaja('cq-l4-almond'));
+      const ids = visibles(def, c);
+      for (const id of ['tInternaCong', 'tFinal']) {
+        expect(ids, id).not.toContain(id);
+        expect(pedidos(def, c), id).not.toContain(id);
+      }
+      expect(etapas(def, c)).toContain('congelacion');
+      expect(ids).toContain('aparienciaCong');
+    });
+
+    it('pide la temperatura superficial como dato del día siguiente, con el PCC que tenía la temperatura final', () => {
+      const c = ctx(enCaja('cq-l4-almond'));
+      expect(faltantes(def, c).map((x) => x.campoId)).not.toContain('tSuperficial');
+      expect(pendientesDiferidos(def, c).map((x) => x.campoId)).toContain('tSuperficial');
+      expect(camposDiferidos(def)).toContain('tSuperficial');
+      const campo = campoDe(def, 'tSuperficial');
+      expect(campo.etiqueta).toBe('Temperatura superficial');
+      expect(campo.pcc).toBe('PCC2');
+      expect(campo.pcc).toBe(campoDe(def, 'tFinal').pcc);
+      expect(campo.tipo === 'numero' && campo.limite).toEqual(POR_DEFINIR);
+    });
+
+    it('con un producto normal todo sigue igual', () => {
+      const c = ctx(normal('cq-l4-almond'));
+      expect(visibles(def, c)).not.toContain('tSuperficial');
+      expect(faltantes(def, c).map((x) => x.campoId)).toContain('tInternaCong');
+      expect(pendientesDiferidos(def, c).map((x) => x.campoId)).toContain('tFinal');
+    });
+
+    it('un registro viejo con temperatura interna la sigue mostrando', () => {
+      const ids = visibles(def, ctx(enCaja('cq-l4-almond'), { tInternaCong: -3, tFinal: -15 }));
+      expect(ids).toContain('tInternaCong');
+      expect(ids).toContain('tFinal');
+      expect(ids).not.toContain('tSuperficial');
+    });
   });
 });

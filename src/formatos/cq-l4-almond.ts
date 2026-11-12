@@ -1,12 +1,13 @@
 import type { DefinicionFormato } from '../motor/tipos';
 import {
   ambiente, apariencia, cierreEmpaque, conRelleno, etapaSensorial, metales, num, pct, pesoEmpaqueCampos,
-  pesoRellenoCampo, pesoUnidadCampo, POR_DEFINIR, presentacion, temp, vencimiento,
+  pesoRellenoCampo, pesoUnidadCampo, POR_DEFINIR, presentacion, salvoCajaTransparente, temp, tempSuperficial, vencimiento,
 } from './comunes';
 
 export const cqL4Almond: DefinicionFormato = {
   codigo: 'cq-l4-almond',
-  version: 2,
+  // v3: productos en caja transparente (solo temperatura superficial)
+  version: 3,
   nombre: 'Control de calidad Línea 4 Almond Bites',
   nombreCorto: 'Almond Bites',
   rotulo: 'L4',
@@ -43,7 +44,7 @@ export const cqL4Almond: DefinicionFormato = {
     {
       id: 'congelacion', titulo: 'Congelación',
       campos: [
-        temp('tInternaCong', 'Temperatura interna', { pcc: 'PCC1', limite: POR_DEFINIR }),
+        salvoCajaTransparente(temp('tInternaCong', 'Temperatura interna', { pcc: 'PCC1', limite: POR_DEFINIR })),
         apariencia('aparienciaCong', 'Apariencia'),
       ],
     },
@@ -54,7 +55,8 @@ export const cqL4Almond: DefinicionFormato = {
         presentacion,
         vencimiento,
         ...pesoEmpaqueCampos,
-        temp('tFinal', 'Temperatura interna final', { pcc: 'PCC2', limite: POR_DEFINIR }),
+        salvoCajaTransparente(temp('tFinal', 'Temperatura interna final', { pcc: 'PCC2', limite: POR_DEFINIR })),
+        tempSuperficial('PCC2'),
         ...cierreEmpaque,
         metales('PCC3'),
       ],

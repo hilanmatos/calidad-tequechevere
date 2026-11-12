@@ -16,4 +16,14 @@ describe('generarDemo', () => {
     expect(con.length).toBeGreaterThan(5);
     expect(con.length).toBeLessThan(demo.registros.length * 0.6);
   });
+
+  it('los productos en caja transparente traen la temperatura superficial y no las internas', () => {
+    const enCaja = new Set(demo.productos.filter((p) => p.cajaTransparente).map((p) => p.id));
+    const registros = demo.registros.filter((r) => r.productoId && enCaja.has(r.productoId));
+    expect(new Set(registros.map((r) => r.formato))).toEqual(new Set(['cq-l1-tequenos', 'cq-l4-almond']));
+    for (const r of registros) {
+      for (const id of ['tInternaTurbo', 'tInicialCong', 'tUltimaBandeja', 'tInternaCong', 'tFinal']) expect(r.datos[id], id).toBeUndefined();
+      expect(r.datos.tSuperficial).toBeTypeOf('number');
+    }
+  });
 });

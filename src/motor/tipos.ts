@@ -28,6 +28,9 @@ export interface Producto {
   esPrecocido: boolean;
   /** Pasa por congelación en la línea (las boquitas no). Si falta, se asume que sí. */
   llevaCongelacion?: boolean;
+  /** Va en caja transparente (decisión de Operaciones): no se le toman temperaturas internas, solo la superficial,
+   *  al día siguiente en el empaque. Si falta, se asume que no. */
+  cajaTransparente?: boolean;
   activo: boolean;
 }
 

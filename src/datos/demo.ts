@@ -21,7 +21,7 @@ function azar(semilla: number) {
 const RANGOS: Record<string, [number, number]> = {
   tAmbiente: [24, 30], hrAmbiente: [50, 62], tAgua: [8, 14], tMasa: [28, 36], hMasa: [25, 32], hQueso: [40, 48],
   vueltas: [3, 4], tInternaTurbo: [2, 8], tAceite: [165, 180], tiempoFreido: [55, 70], tInternaFreido: [72, 85],
-  defectos: [0, 9], tInicialCong: [4, 9], tFinal: [-8, -2], tSellado: [150, 170], tRelleno: [5, 12],
+  defectos: [0, 9], tInicialCong: [4, 9], tFinal: [-8, -2], tSuperficial: [-16, -10], tSellado: [150, 170], tRelleno: [5, 12],
   tInternaCong: [-4, -1], pesoMasa: [45, 58], tiempoEspera: [30, 60], tRellenoFinal: [12, 19], tiempoFormado: [40, 50],
   pctNoConforme: [0, 5], hYuca: [54, 58], tiempoCoccion: [20, 22], tCoccion: [95, 100], cantidadAgua: [18, 22],
   tiempoPreCong: [45, 60], tInternaPreCong: [-3, -1], tiempoFritura: [30, 60], pctNoConformeFritura: [5, 30],

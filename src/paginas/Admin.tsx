@@ -1,35 +1,44 @@
 import { Pencil, Plus, Save, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
+import { useSesion } from '../auth/Sesion';
 import { Boton, Cargando, cx, Encabezado, MensajeError, Panel, useAvisar } from '../componentes/ui';
 import { FORMATOS } from '../formatos';
 import { AREAS } from '../formatos/comunes';
 import { useGuardarOperario, useGuardarPerfil, useGuardarProducto, useOperarios, usePerfiles, useProductos, useRepo } from '../datos/hooks';
 import type { Perfil } from '../datos/repositorio';
+import { pestanasAdmin, type PestanaAdmin } from '../lib/permisos';
 import { fmt } from '../motor/evaluar';
 import type { Operario, Producto } from '../motor/tipos';
 
-type Pestana = 'productos' | 'operarios' | 'usuarios';
-
 const entrada = 'h-12 w-full rounded-xl border border-linea bg-white px-3 outline-none focus:border-vino';
 const LINEAS = FORMATOS.filter((f) => f.usaProducto);
+const TITULO_PESTANA: Record<PestanaAdmin, string> = { productos: 'Productos', operarios: 'Operarios', usuarios: 'Usuarios' };
 
 export function Admin() {
-  const [pestana, setPestana] = useState<Pestana>('productos');
+  const { usuario } = useSesion();
+  const esAdmin = usuario.rol === 'admin';
+  // la capturista solo administra operarios: agrega, desactiva y reactiva
+  const pestanas = pestanasAdmin(usuario.rol);
+  const [pestana, setPestana] = useState<PestanaAdmin>(pestanas[0]);
   return (
     <div>
-      <Encabezado titulo="Administración" subtitulo="Catálogos que usan los formatos: productos con sus pesos, operarios por área y usuarios." />
-      <div className="flex rounded-xl bg-escarcha-2 p-1 w-fit mb-5" role="tablist">
-        {([['productos', 'Productos'], ['operarios', 'Operarios'], ['usuarios', 'Usuarios']] as const).map(([id, texto]) => (
-          <button
-            key={id} type="button" role="tab" aria-selected={pestana === id} onClick={() => setPestana(id)}
-            className={cx('h-11 px-5 rounded-lg font-bold', pestana === id ? 'bg-white text-vino shadow-sm' : 'text-tinta-suave')}
-          >
-            {texto}
-          </button>
-        ))}
-      </div>
+      {esAdmin
+        ? <Encabezado titulo="Administración" subtitulo="Catálogos que usan los formatos: productos con sus pesos, operarios por área y usuarios." />
+        : <Encabezado titulo="Operarios" subtitulo="Agrega a las personas nuevas y desactiva a las que ya no están en planta. Para corregir un nombre o un área, pídelo a un administrador." />}
+      {pestanas.length > 1 && (
+        <div className="flex rounded-xl bg-escarcha-2 p-1 w-fit mb-5" role="tablist">
+          {pestanas.map((id) => (
+            <button
+              key={id} type="button" role="tab" aria-selected={pestana === id} onClick={() => setPestana(id)}
+              className={cx('h-11 px-5 rounded-lg font-bold', pestana === id ? 'bg-white text-vino shadow-sm' : 'text-tinta-suave')}
+            >
+              {TITULO_PESTANA[id]}
+            </button>
+          ))}
+        </div>
+      )}
       {pestana === 'productos' && <Productos />}
-      {pestana === 'operarios' && <Operarios />}
+      {pestana === 'operarios' && <Operarios editaDatos={esAdmin} />}
       {pestana === 'usuarios' && <Usuarios />}
     </div>
   );
@@ -45,7 +54,8 @@ function Campo({ etiqueta, children, className }: { etiqueta: string; children: 
 }
 
 const nuevoProducto = (): Producto => ({
-  id: '', codigo: '', nombre: '', linea: LINEAS[0].codigo, presentacion: '', llevaRelleno: true, esPrecocido: false, llevaCongelacion: true, activo: true, vidaUtilMeses: 6,
+  id: '', codigo: '', nombre: '', linea: LINEAS[0].codigo, presentacion: '', llevaRelleno: true, esPrecocido: false, llevaCongelacion: true,
+  cajaTransparente: false, activo: true, vidaUtilMeses: 6,
 });
 
 function NumeroOpcional({ valor, cambiar, etiqueta }: { valor?: number; cambiar: (v?: number) => void; etiqueta: string }) {
@@ -102,11 +112,17 @@ function Productos() {
             <NumeroOpcional etiqueta="Relleno máximo por pieza (g)" valor={p.pesoRellenoMaxG} cambiar={(v) => fijar({ pesoRellenoMaxG: v })} />
             <NumeroOpcional etiqueta="Peso declarado del empaque (kg)" valor={p.pesoDeclaradoKg} cambiar={(v) => fijar({ pesoDeclaradoKg: v })} />
             <NumeroOpcional etiqueta="Vida útil (meses)" valor={p.vidaUtilMeses} cambiar={(v) => fijar({ vidaUtilMeses: v })} />
-            <div className="flex flex-col gap-2 justify-end">
-              {([['llevaRelleno', 'Lleva relleno'], ['esPrecocido', 'Es precocido (se fríe)'], ['llevaCongelacion', 'Pasa por congelación'], ['activo', 'Activo']] as const).map(([k, t]) => (
+            <div className="lg:col-span-3 flex flex-wrap content-end items-end gap-x-6 gap-y-2">
+              {([
+                ['llevaRelleno', 'Lleva relleno', true],
+                ['esPrecocido', 'Es precocido (se fríe)', false],
+                ['llevaCongelacion', 'Pasa por congelación', true],
+                ['cajaTransparente', 'Va en caja transparente: solo temperatura superficial', false],
+                ['activo', 'Activo', true],
+              ] as const).map(([k, t, siFalta]) => (
                 <label key={k} className="flex items-center gap-2 font-bold">
-                  {/* sin dato, llevaCongelacion cuenta como sí */}
-                  <input type="checkbox" className="size-5 accent-vino" checked={p[k] !== false} onChange={(e) => fijar({ [k]: e.target.checked })} /> {t}
+                  {/* sin dato, llevaCongelacion cuenta como sí y cajaTransparente como no */}
+                  <input type="checkbox" className="size-5 accent-vino" checked={p[k] ?? siFalta} onChange={(e) => fijar({ [k]: e.target.checked })} /> {t}
                 </label>
               ))}
             </div>
@@ -136,7 +152,7 @@ function Productos() {
                     {ps.map((x) => (
                       <tr key={x.id} className={cx('border-b border-linea/60 last:border-0', !x.activo && 'opacity-50')}>
                         <td className="px-3 py-2.5 font-bold">{x.codigo || '—'}</td>
-                        <td className="px-3 py-2.5"><strong>{x.nombre}</strong><span className="block text-tinta-suave">{x.presentacion}{x.esPrecocido ? ', precocido' : ''}{x.llevaCongelacion === false ? ', sin congelación' : ''}</span></td>
+                        <td className="px-3 py-2.5"><strong>{x.nombre}</strong><span className="block text-tinta-suave">{x.presentacion}{x.esPrecocido ? ', precocido' : ''}{x.llevaCongelacion === false ? ', sin congelación' : ''}{x.cajaTransparente && !/caja transparente/i.test(x.presentacion) ? ', caja transparente' : ''}</span></td>
                         <td className="px-3 py-2.5 cifra">
                           {x.pesoUnidadG !== undefined ? `${fmt(x.pesoUnidadG)} g` : <span className="text-confirmar">sin cargar</span>}
                           {(x.pesoUnidadMinG !== undefined || x.pesoUnidadMaxG !== undefined) && <span className="block text-tinta-suave">{fmt(x.pesoUnidadMinG)} a {fmt(x.pesoUnidadMaxG)} g</span>}
@@ -166,7 +182,8 @@ function Productos() {
   );
 }
 
-function Operarios() {
+/** `editaDatos`: puede cambiar el nombre y el área (solo el administrador). Todos agregan, desactivan y reactivan. */
+function Operarios({ editaDatos }: { editaDatos: boolean }) {
   const { data, isLoading, error } = useOperarios();
   const guardar = useGuardarOperario();
   const avisar = useAvisar();
@@ -180,6 +197,15 @@ function Operarios() {
       avisar(o.id ? 'Operario actualizado' : 'Operario agregado');
       if (!o.id) setNuevo({ ...nuevo, nombre: '' });
       setEditando(undefined);
+    } catch (e) {
+      avisar(e instanceof Error ? e.message : 'No se guardó el operario.', 'error');
+    }
+  };
+  // solo cambia `activo`: el nombre va tal cual está guardado (la capturista no puede cambiarlo)
+  const cambiarActivo = async (o: Operario) => {
+    try {
+      await guardar.mutateAsync({ ...o, activo: !o.activo });
+      avisar(o.activo ? 'Operario desactivado' : 'Operario reactivado');
     } catch (e) {
       avisar(e instanceof Error ? e.message : 'No se guardó el operario.', 'error');
     }
@@ -215,12 +241,14 @@ function Operarios() {
                     ) : (
                       <>
                         <span className={cx('flex-1 font-bold', !o.activo && 'text-tinta-suave line-through')}>{o.nombre}</span>
-                        <button type="button" className="text-sm font-bold text-vino hover:underline" onClick={() => enviar({ ...o, activo: !o.activo })}>
-                          {o.activo ? 'Desactivar' : 'Activar'}
+                        <button type="button" className="min-h-10 px-2 text-sm font-bold text-vino hover:underline" onClick={() => cambiarActivo(o)}>
+                          {o.activo ? 'Desactivar' : 'Reactivar'}
                         </button>
-                        <button type="button" onClick={() => setEditando(o.id)} className="size-10 rounded-lg grid place-items-center text-tinta-suave hover:bg-escarcha-2" aria-label={`Editar ${o.nombre}`}>
-                          <Pencil size={18} />
-                        </button>
+                        {editaDatos && (
+                          <button type="button" onClick={() => setEditando(o.id)} className="size-10 rounded-lg grid place-items-center text-tinta-suave hover:bg-escarcha-2" aria-label={`Editar ${o.nombre}`}>
+                            <Pencil size={18} />
+                          </button>
+                        )}
                       </>
                     )}
                   </li>

@@ -1,6 +1,5 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { useSesion } from './auth/Sesion';
 import { Marco } from './componentes/Marco';
 import { Cargando } from './componentes/ui';
 import { Captura } from './paginas/Captura';
@@ -14,7 +13,6 @@ const Tablero = lazy(() => import('./paginas/Tablero').then((m) => ({ default: m
 const Admin = lazy(() => import('./paginas/Admin').then((m) => ({ default: m.Admin })));
 
 export function App() {
-  const { usuario } = useSesion();
   return (
     <Routes>
       <Route element={<Marco />}>
@@ -25,9 +23,8 @@ export function App() {
         <Route path="registro/:id/completar" element={<Completar />} />
         <Route path="historial" element={<Historial />} />
         <Route path="tablero" element={<Suspense fallback={<Cargando />}><Tablero /></Suspense>} />
-        {usuario.rol === 'admin' && (
-          <Route path="admin" element={<Suspense fallback={<Cargando />}><Admin /></Suspense>} />
-        )}
+        {/* el administrador ve todos los catálogos; la capturista, solo los operarios */}
+        <Route path="admin" element={<Suspense fallback={<Cargando />}><Admin /></Suspense>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

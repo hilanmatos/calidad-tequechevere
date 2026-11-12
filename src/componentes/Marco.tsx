@@ -1,17 +1,18 @@
-import { ChartColumn, History, House, LogOut, RefreshCw, Settings, type LucideIcon } from 'lucide-react';
+import { ChartColumn, History, House, LogOut, RefreshCw, Settings, Users, type LucideIcon } from 'lucide-react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useSesion } from '../auth/Sesion';
 import { useRepo } from '../datos/hooks';
 import { reiniciarDemo } from '../datos/repo-local';
+import { etiquetaAdmin } from '../lib/permisos';
 import { cx } from './ui';
 
-interface ItemNav { to: string; etiqueta: string; icono: LucideIcon; soloAdmin?: boolean }
+interface ItemNav { to: string; etiqueta: string; icono: LucideIcon }
 
 const NAV: ItemNav[] = [
   { to: '/', etiqueta: 'Hoy', icono: House },
   { to: '/historial', etiqueta: 'Historial', icono: History },
   { to: '/tablero', etiqueta: 'Tablero', icono: ChartColumn },
-  { to: '/admin', etiqueta: 'Admin', icono: Settings, soloAdmin: true },
+  { to: '/admin', etiqueta: 'Admin', icono: Settings },
 ];
 
 const iniciales = (n: string) => n.split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('');
@@ -21,7 +22,10 @@ export function Marco() {
   const repo = useRepo();
   const { pathname } = useLocation();
   const enCaptura = pathname.startsWith('/registrar') || pathname.endsWith('/editar') || pathname.endsWith('/completar');
-  const items = NAV.filter((i) => !i.soloAdmin || usuario.rol === 'admin');
+  // la capturista entra a la misma página, pero solo administra operarios
+  const items = NAV.map((i) => (i.to === '/admin' && usuario.rol !== 'admin'
+    ? { ...i, etiqueta: etiquetaAdmin(usuario.rol), icono: Users }
+    : i));
 
   return (
     <div className="min-h-dvh lg:pl-28">

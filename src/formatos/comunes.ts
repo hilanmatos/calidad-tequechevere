@@ -1,4 +1,4 @@
-import { aNumero, vencimientoSugerido } from '../motor/evaluar';
+import { aNumero, estaVacio, vencimientoSugerido } from '../motor/evaluar';
 import type {
   Campo,
   CampoCalculado,
@@ -84,6 +84,31 @@ export const tempAgua = temp('tAgua', 'Temperatura del agua', {
 });
 
 export const conRelleno = llevaRelleno;
+
+/** Producto en caja transparente (decisión de Operaciones): no se le toman temperaturas internas, solo la superficial. */
+export const enCajaTransparente = (c: Contexto) => c.producto?.cajaTransparente === true;
+
+/** El campo no se pide en productos de caja transparente. Un registro que ya trae el dato lo sigue mostrando, para no
+ *  perderlo al editar (como la congelación de las boquitas). */
+export function salvoCajaTransparente<T extends Campo>(campo: T): T {
+  const aplica = campo.aplica;
+  return {
+    ...campo,
+    aplica: (c: Contexto) => (aplica ? aplica(c) : true) && (!enCajaTransparente(c) || !estaVacio(c.valores[campo.id])),
+  };
+}
+
+/** Única temperatura de los productos en caja transparente: en la superficie del producto empacado, al día siguiente.
+ *  Lleva el PCC que tenía la temperatura final (`tFinal`) del formato. Un registro viejo que ya midió la temperatura
+ *  final no la pide; una vez registrada, se sigue mostrando aunque el producto cambie. */
+export const tempSuperficial = (pcc: string): CampoNumero =>
+  temp('tSuperficial', 'Temperatura superficial', {
+    pcc,
+    limite: POR_DEFINIR,
+    ayuda: 'Se toma al día siguiente, en la superficie del producto empacado',
+    diferido: true,
+    aplica: (c) => !estaVacio(c.valores.tSuperficial) || (enCajaTransparente(c) && estaVacio(c.valores.tFinal)),
+  });
 
 const aMinutos = (h: unknown): number | undefined => {
   const m = typeof h === 'string' ? /^(\d{1,2}):(\d{2})$/.exec(h) : null;

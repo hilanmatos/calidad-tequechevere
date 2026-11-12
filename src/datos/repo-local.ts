@@ -1,11 +1,12 @@
 import { hoyPanama } from '../lib/fechas';
+import { validarOperario } from '../lib/permisos';
 import type { Operario, Producto } from '../motor/tipos';
 import { aplicarCompletar, validarCompletar } from './completar';
 import { generarDemo } from './demo';
 import { DiaCerrado, RegistroDuplicado, type CambioRegistro, type CierreDia, type Perfil, type Registro, type Repositorio, type Usuario } from './repositorio';
 
-// v3: formatos con datos del día siguiente, bandejas y rangos de relleno
-const CLAVE = 'calidad-chevere-demo-v3';
+// v4: productos en caja transparente
+const CLAVE = 'calidad-chevere-demo-v4';
 const CLAVE_SESION = 'calidad-chevere-demo-sesion';
 
 interface Almacen {
@@ -52,7 +53,8 @@ function guardar(a: Almacen) {
 
 const pausa = () => new Promise((r) => setTimeout(r, 120));
 
-export function repoLocal(): Repositorio {
+/** `usuario`: con quién se entra al demo (las pruebas usan un capturista; la app, siempre el administrador). */
+export function repoLocal(usuario: Usuario = USUARIO_DEMO): Repositorio {
   let a = leer();
   const oyentes = new Set<(u: Usuario | null) => void>();
   const conId = <T extends { id: string }>(x: T): T => (x.id ? x : { ...x, id: crypto.randomUUID() });
@@ -65,7 +67,7 @@ export function repoLocal(): Repositorio {
     modo: 'demo',
     async sesion() {
       try {
-        return localStorage.getItem(CLAVE_SESION) ? USUARIO_DEMO : null;
+        return localStorage.getItem(CLAVE_SESION) ? usuario : null;
       } catch {
         return null;
       }
@@ -73,7 +75,7 @@ export function repoLocal(): Repositorio {
     async ingresar() {
       await pausa();
       try { localStorage.setItem(CLAVE_SESION, '1'); } catch { /* sin almacenamiento */ }
-      return USUARIO_DEMO;
+      return usuario;
     },
     async salir() {
       try { localStorage.removeItem(CLAVE_SESION); } catch { /* sin almacenamiento */ }
@@ -87,7 +89,12 @@ export function repoLocal(): Repositorio {
     async productos() { return [...a.productos]; },
     async guardarProducto(p) { reemplazar(a.productos, conId(p)); guardar(a); },
     async operarios() { return [...a.operarios]; },
-    async guardarOperario(o) { reemplazar(a.operarios, conId(o)); guardar(a); },
+    async guardarOperario(o) {
+      // mismas reglas que las políticas y el trigger de public.operarios
+      validarOperario(a.operarios.find((x) => x.id === o.id), o, usuario);
+      reemplazar(a.operarios, conId(o));
+      guardar(a);
+    },
     async perfiles() { return [...a.perfiles]; },
     async guardarPerfil(p) { reemplazar(a.perfiles, p); guardar(a); },
 
@@ -112,12 +119,12 @@ export function repoLocal(): Repositorio {
         const previo = a.registros.find((x) => x.id === r.id);
         if (!previo) throw new Error('El registro ya no existe.');
         const nuevo: Registro = { ...previo, ...r, id: previo.id, actualizadoEn: ahora };
-        a.historial.push({ id: a.historial.length + 1, accion: 'UPDATE', usuario: USUARIO_DEMO.nombre, en: ahora, antes: previo, despues: nuevo });
+        a.historial.push({ id: a.historial.length + 1, accion: 'UPDATE', usuario: usuario.nombre, en: ahora, antes: previo, despues: nuevo });
         reemplazar(a.registros, nuevo);
         guardar(a);
         return nuevo;
       }
-      const nuevo: Registro = { ...r, id: crypto.randomUUID(), origen: 'app', creadoPor: 'demo', creadoEn: ahora };
+      const nuevo: Registro = { ...r, id: crypto.randomUUID(), origen: 'app', creadoPor: usuario.id, creadoEn: ahora };
       a.registros.push(nuevo);
       guardar(a);
       return nuevo;
@@ -127,9 +134,9 @@ export function repoLocal(): Repositorio {
       // mismas reglas que completar_registro en Supabase; no mira el cierre del día ni la clave única
       const previo = a.registros.find((x) => x.id === id);
       const completado = { datos, desviaciones, tieneDesviacionPcc, accionCorrectiva };
-      validarCompletar(previo, completado, USUARIO_DEMO, hoyPanama());
+      validarCompletar(previo, completado, usuario, hoyPanama());
       const nuevo = aplicarCompletar(previo, completado, new Date().toISOString());
-      a.historial.push({ id: a.historial.length + 1, accion: 'UPDATE', usuario: USUARIO_DEMO.nombre, en: nuevo.actualizadoEn!, antes: previo, despues: nuevo });
+      a.historial.push({ id: a.historial.length + 1, accion: 'UPDATE', usuario: usuario.nombre, en: nuevo.actualizadoEn!, antes: previo, despues: nuevo });
       reemplazar(a.registros, nuevo);
       guardar(a);
       return nuevo;
@@ -137,7 +144,7 @@ export function repoLocal(): Repositorio {
     async eliminarRegistro(id) {
       const previo = a.registros.find((x) => x.id === id);
       if (!previo) return;
-      a.historial.push({ id: a.historial.length + 1, accion: 'DELETE', usuario: USUARIO_DEMO.nombre, en: new Date().toISOString(), antes: previo });
+      a.historial.push({ id: a.historial.length + 1, accion: 'DELETE', usuario: usuario.nombre, en: new Date().toISOString(), antes: previo });
       a.registros = a.registros.filter((x) => x.id !== id);
       guardar(a);
     },
@@ -150,7 +157,7 @@ export function repoLocal(): Repositorio {
     },
     async cerrarDia(c) {
       if (a.cierres.some((x) => x.fecha === c.fecha)) throw new Error('Este día ya estaba cerrado.');
-      const cierre: CierreDia = { ...c, cerradoPor: 'demo', cerradoEn: new Date().toISOString() };
+      const cierre: CierreDia = { ...c, cerradoPor: usuario.id, cerradoEn: new Date().toISOString() };
       a.cierres.push(cierre);
       guardar(a);
       return cierre;
